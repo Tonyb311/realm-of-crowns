@@ -174,6 +174,23 @@ export const GOD_BUFFS: Record<string, GodBuff> = {
     },
     shrineEffects: { martialLaw: 1 },
   },
+  seraphiel: {
+    personalBuffs: {
+      MINORITY: { historicalRecordsAccess: 1 },
+      CHAPTER: { historicalRecordsAccess: 1, bloodMemory: 1 },
+      ESTABLISHED: { historicalRecordsAccess: 1, bloodMemory: 1, invokeBloodMemory: 1 },
+      DOMINANT: { historicalRecordsAccess: 1, bloodMemory: 1, invokeBloodMemory: 1, grudgeTracking: 1 },
+    },
+    townEffects: {
+      ESTABLISHED: { diplomaticReputationPercent: 0.05 },
+      DOMINANT: { diplomaticReputationPercent: 0.10 },
+    },
+    metricModifiers: {
+      ESTABLISHED: {},
+      DOMINANT: {},
+    },
+    shrineEffects: { reckoning: 1 },
+  },
 };
 
 /** Get a character's personal religion buffs based on their god and chapter tier */
@@ -211,4 +228,9 @@ export const BUFF_LABELS: Record<string, string> = {
   lawEnforcementPercent: 'Law Enforcement',
   townGuardBonus: 'Town Guard Strength',
   guardCapabilityPercent: 'Guard Capability',
+  historicalRecordsAccess: 'Historical Records',
+  bloodMemory: 'Blood Memory',
+  invokeBloodMemory: 'Invoke Blood Memory',
+  grudgeTracking: 'Grudge Tracking',
+  diplomaticReputationPercent: 'Diplomatic Reputation',
 };

@@ -6,8 +6,8 @@
  */
 
 import { db } from '../lib/db';
-import { sql } from 'drizzle-orm';
-import { racialReputations } from '@database/tables';
+import { eq, sql } from 'drizzle-orm';
+import { racialReputations, townPolicies, characters } from '@database/tables';
 import { getReputationGainBonus } from './religion-buffs';
 import crypto from 'crypto';
 
@@ -22,9 +22,34 @@ export async function addRacialReputation(
   baseAmount: number,
   townId: string,
 ): Promise<void> {
-  // Get Valtheris reputation bonus
+  // Get Valtheris + Seraphiel reputation bonus
   const reputationBonus = await getReputationGainBonus(characterId, townId);
-  const finalAmount = baseAmount * (1 + reputationBonus);
+  let finalAmount = baseAmount * (1 + reputationBonus);
+
+  // Check for active blood memory modifier in this town
+  try {
+    const char = await db.query.characters.findFirst({
+      where: eq(characters.id, characterId),
+      columns: { race: true },
+    });
+    if (char) {
+      const policy = await db.query.townPolicies.findFirst({
+        where: eq(townPolicies.townId, townId),
+        columns: { tradePolicy: true },
+      });
+      const tp = policy?.tradePolicy as Record<string, any> | null;
+      if (tp?.bloodMemoryUntil && new Date(tp.bloodMemoryUntil) > new Date()) {
+        const { bloodMemoryRaceA, bloodMemoryRaceB, bloodMemoryModifier } = tp;
+        const races = [char.race, targetRace].sort();
+        const memoryRaces = [bloodMemoryRaceA, bloodMemoryRaceB].sort();
+        if (races[0] === memoryRaces[0] && races[1] === memoryRaces[1]) {
+          finalAmount *= bloodMemoryModifier === 'positive' ? 1.5 : 0.5;
+        }
+      }
+    }
+  } catch {
+    // Fire-and-forget — blood memory check failure should not block reputation changes
+  }
 
   await db.insert(racialReputations)
     .values({

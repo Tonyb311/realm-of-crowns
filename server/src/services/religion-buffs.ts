@@ -268,13 +268,16 @@ export function getReligionEncounterReductionFromChapters(
 
 /**
  * Get the combined reputation gain bonus for a character in a given town.
- * Combines personal buff (Valtheris member) + town-wide buff (Valtheris dominant).
+ * Combines personal buff (Valtheris member) + town-wide buff (Valtheris dominant)
+ * + Seraphiel diplomaticReputationPercent (stacks additively).
  * Returns 0-1 (e.g. 0.15 = 15% bonus).
  */
 export async function getReputationGainBonus(characterId: string, townId: string): Promise<number> {
   const ctx = await getCharacterReligionContext(characterId);
   const buffs = resolveReligionBuffs({ ...ctx, homeTownId: townId });
-  return Math.min(1, buffs.combinedBuffs.reputationGainPercent ?? 0);
+  const valtherisBonus = buffs.combinedBuffs.reputationGainPercent ?? 0;
+  const seraphielBonus = buffs.combinedBuffs.diplomaticReputationPercent ?? 0;
+  return Math.min(1, valtherisBonus + seraphielBonus);
 }
 
 /** Batch-friendly: get reputation gain bonus from pre-fetched chapters. */
@@ -286,7 +289,9 @@ export function getReputationGainBonusFromChapters(
 ): number {
   const ctx = buildReligionContext(patronGodId, homeTownId, allChapters);
   const buffs = resolveReligionBuffs({ ...ctx, homeTownId: townId });
-  return Math.min(1, buffs.combinedBuffs.reputationGainPercent ?? 0);
+  const valtherisBonus = buffs.combinedBuffs.reputationGainPercent ?? 0;
+  const seraphielBonus = buffs.combinedBuffs.diplomaticReputationPercent ?? 0;
+  return Math.min(1, valtherisBonus + seraphielBonus);
 }
 
 // ---------------------------------------------------------------------------

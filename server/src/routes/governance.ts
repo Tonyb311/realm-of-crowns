@@ -10,6 +10,7 @@ import { AuthenticatedRequest } from '../types/express';
 import { emitGovernanceEvent } from '../socket/events';
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
+import { logTownEvent } from '../services/history-logger';
 import crypto from 'crypto';
 
 const router = Router();
@@ -101,6 +102,11 @@ router.post('/propose-law', authGuard, characterGuard, requireTown, validate(pro
       lawType: lawType ?? 'general',
       expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
     }).returning();
+
+    // Fire-and-forget historical logging (log to character's home town)
+    if (character.homeTownId) {
+      logTownEvent(character.homeTownId, 'LAW', `Law Proposed: ${title}`, `${character.name} proposed a ${lawType ?? 'general'} law: ${title}`, character.id).catch(() => {});
+    }
 
     return res.status(201).json({ law });
   } catch (error) {
@@ -247,6 +253,9 @@ router.post('/set-tax', authGuard, characterGuard, requireTown, validate(setTaxS
       taxRate,
       setBy: character.name,
     });
+
+    // Fire-and-forget historical logging
+    logTownEvent(townId, 'LAW', `Tax Rate Changed to ${Math.round(taxRate * 100)}%`, `${character.name} set the tax rate to ${Math.round(taxRate * 100)}%.`, character.id).catch(() => {});
 
     return res.json({ policy });
   } catch (error) {

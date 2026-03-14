@@ -1,10 +1,12 @@
 import cron from 'node-cron';
 import { db } from '../lib/db';
 import { eq, lte, and, ne, count, desc, sql, isNull, gte } from 'drizzle-orm';
-import { elections, electionVotes, towns, characters, impeachments, kingdoms, churchChapters, gods, referendums, townPolicies, townTreasuries } from '@database/tables';
+import { elections, electionVotes, towns, characters, impeachments, kingdoms, churchChapters, gods, referendums, townPolicies, townTreasuries, racialReputations } from '@database/tables';
 import { logger } from '../lib/logger';
 import { cronJobExecutions } from '../lib/metrics';
 import type { Server } from 'socket.io';
+import { logTownEvent } from '../services/history-logger';
+import { addRacialReputation } from '../services/reputation';
 
 const NOMINATION_DURATION_HOURS = 24;
 const VOTING_DURATION_HOURS = 48;
@@ -444,6 +446,24 @@ async function transitionVotingToCompleted(io: Server, martialLawTowns: Set<stri
         votes: voteMap.get(c.characterId) || 0,
       })),
     });
+
+    // Fire-and-forget historical logging
+    if (election.townId) {
+      const totalVotes = voteCounts.reduce((sum, v) => sum + v.voteCount, 0);
+      logTownEvent(
+        election.townId,
+        'ELECTION',
+        winnerId
+          ? `${election.type === 'HIGH_PRIEST' ? 'High Priest' : 'Mayor'} Election Won by ${winnerName}`
+          : `${election.type === 'HIGH_PRIEST' ? 'High Priest' : 'Mayor'} Election — No Winner`,
+        winnerId
+          ? `${winnerName} was elected with ${maxVotes} votes out of ${totalVotes} total.`
+          : `Election completed with no winner.`,
+        winnerId ?? undefined,
+        undefined,
+        { electionType: election.type, totalVotes, votesByCandidate: Object.fromEntries(voteMap) },
+      ).catch(() => {});
+    }
   }
 }
 
@@ -596,6 +616,9 @@ async function resolveExpiredReferendums(io: Server, martialLawTowns: Set<string
 
     if (passed) {
       await applyReferendumPolicy(ref);
+    } else if (ref.policyType === 'RECKONING') {
+      // RECKONING FAILED: 10% of Seraphiel members in this town lose their faith
+      await applyReckoningFailed(ref.townId);
     }
 
     await db.update(referendums).set({
@@ -614,6 +637,17 @@ async function resolveExpiredReferendums(io: Server, martialLawTowns: Set<string
       question: ref.question,
       policyType: ref.policyType,
     });
+
+    // Fire-and-forget historical logging
+    logTownEvent(
+      ref.townId,
+      'REFERENDUM',
+      `Referendum ${passed ? 'Passed' : 'Failed'}: ${ref.question}`,
+      `Vote result: ${ref.votesFor} for, ${ref.votesAgainst} against. Policy type: ${ref.policyType}.`,
+      undefined,
+      undefined,
+      { policyType: ref.policyType, votesFor: ref.votesFor, votesAgainst: ref.votesAgainst, passed },
+    ).catch(() => {});
   }
 }
 
@@ -682,9 +716,105 @@ async function applyReferendumPolicy(ref: { townId: string; policyType: string; 
       console.log(`[ElectionLifecycle] Referendum applied trade_policy to town ${ref.townId}`);
       break;
     }
+    case 'RECKONING': {
+      const targetRace = pv.targetRace as string;
+      const penalty = pv.penalty as number ?? -10;
+
+      // Apply reputation penalty to ALL characters in this town
+      const townChars = await db.query.characters.findMany({
+        where: eq(characters.homeTownId, ref.townId),
+        columns: { id: true },
+      });
+
+      for (const ch of townChars) {
+        // Direct upsert — bypass religion multipliers for penalty application
+        await db.insert(racialReputations)
+          .values({
+            id: crypto.randomUUID(),
+            characterId: ch.id,
+            race: targetRace,
+            score: Math.max(-100, Math.min(100, penalty)),
+            updatedAt: new Date().toISOString(),
+          })
+          .onConflictDoUpdate({
+            target: [racialReputations.characterId, racialReputations.race],
+            set: {
+              score: sql`LEAST(100, GREATEST(-100, ${racialReputations.score} + ${penalty}))`,
+              updatedAt: new Date().toISOString(),
+            },
+          });
+      }
+
+      console.log(`[ElectionLifecycle] Reckoning PASSED: ${penalty} reputation with ${targetRace} applied to ${townChars.length} characters in town ${ref.townId}`);
+
+      // Fire-and-forget historical logging
+      logTownEvent(
+        ref.townId,
+        'RECKONING',
+        `Reckoning Passed — ${targetRace} Held Accountable`,
+        `${townChars.length} town residents received ${penalty} reputation with ${targetRace}. Grievance: ${pv.grievance}`,
+        undefined,
+        targetRace,
+        { targetRace, penalty, affectedCount: townChars.length, grievance: pv.grievance },
+      ).catch(() => {});
+      break;
+    }
     default:
       console.warn(`[ElectionLifecycle] Unknown referendum policy type: ${ref.policyType}`);
   }
+}
+
+/**
+ * Handle RECKONING FAILED: 10% of Seraphiel members in this town lose their faith.
+ * LOCAL ONLY — only affects the chapter in the town where the Reckoning was called.
+ */
+async function applyReckoningFailed(townId: string) {
+  const chapter = await db.query.churchChapters.findFirst({
+    where: and(
+      eq(churchChapters.godId, 'seraphiel'),
+      eq(churchChapters.townId, townId),
+    ),
+  });
+  if (!chapter || chapter.memberCount <= 0) return;
+
+  const lossCount = Math.max(1, Math.floor(chapter.memberCount * 0.10));
+
+  // Find random Seraphiel members in this town
+  const seraphielMembers = await db.query.characters.findMany({
+    where: and(
+      eq(characters.patronGodId, 'seraphiel'),
+      eq(characters.homeTownId, townId),
+    ),
+    columns: { id: true, name: true },
+  });
+
+  // Shuffle and take lossCount
+  const shuffled = seraphielMembers.sort(() => Math.random() - 0.5);
+  const toDeconvert = shuffled.slice(0, lossCount);
+
+  for (const ch of toDeconvert) {
+    await db.update(characters)
+      .set({ patronGodId: null })
+      .where(eq(characters.id, ch.id));
+  }
+
+  // Decrement chapter member count
+  await db.update(churchChapters)
+    .set({ memberCount: sql`GREATEST(0, ${churchChapters.memberCount} - ${toDeconvert.length})` })
+    .where(eq(churchChapters.id, chapter.id));
+
+  console.log(`[ElectionLifecycle] Reckoning FAILED: ${toDeconvert.length} Seraphiel members deconverted in town ${townId}`);
+
+  // Fire-and-forget historical logging
+  logTownEvent(
+    townId,
+    'RECKONING',
+    `Reckoning Failed — ${toDeconvert.length} Left the Choir of Ashes`,
+    `The Reckoning was rejected by the town. ${toDeconvert.length} Seraphiel members lost their faith in disgust.`,
+    undefined,
+    undefined,
+    { deconvertedCount: toDeconvert.length, deconvertedNames: toDeconvert.map(c => c.name) },
+  ).catch(() => {});
 }
 
 /**
@@ -715,5 +845,13 @@ async function expireMartialLaw(io: Server) {
     console.log(`[ElectionLifecycle] Martial law has ended in "${town?.name ?? p.townId}"`);
 
     io.emit('martial-law:expired', { townId: p.townId, townName: town?.name });
+
+    // Fire-and-forget historical logging
+    logTownEvent(
+      p.townId,
+      'MARTIAL_LAW',
+      'Martial Law Ended',
+      `Martial law has expired in ${town?.name ?? 'the town'}.`,
+    ).catch(() => {});
   }
 }

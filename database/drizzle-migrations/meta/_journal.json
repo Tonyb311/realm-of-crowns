@@ -162,6 +162,13 @@
       "when": 1774915200000,
       "tag": "0022_solimene_disputes_referendums",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1775001600000,
+      "tag": "0023_seraphiel_town_history",
+      "breakpoints": true
     }
   ]
 }

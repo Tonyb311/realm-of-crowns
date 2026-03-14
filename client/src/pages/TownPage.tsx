@@ -18,6 +18,7 @@ import {
   Package,
   Scale,
   Shield,
+  Skull,
 } from 'lucide-react';
 import api from '../services/api';
 import { getSocket } from '../services/socket';
@@ -222,6 +223,17 @@ export default function TownPage() {
   }>({
     queryKey: ['temple', 'martial-law-status', townId],
     queryFn: async () => (await api.get(`/temple/martial-law-status/${townId}`)).data,
+    enabled: !!townId,
+    staleTime: 60000,
+  });
+
+  // Fetch reckoning status for banner
+  const { data: reckoningStatus } = useQuery<{
+    active: boolean; targetRace?: string; grievance?: string;
+    calledBy?: string; endsAt?: string;
+  }>({
+    queryKey: ['temple', 'reckoning-status', townId],
+    queryFn: async () => (await api.get(`/temple/reckoning-status/${townId}`)).data,
     enabled: !!townId,
     staleTime: 60000,
   });
@@ -494,6 +506,27 @@ export default function TownPage() {
                 <p className="text-xs text-red-300/80">
                   Elections, impeachments, and referendums suspended until {new Date(martialLawStatus.endsAt!).toLocaleDateString()}
                   {martialLawStatus.declaredBy && ` — Declared by ${martialLawStatus.declaredBy}`}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reckoning Banner — dark red, dramatic */}
+      {reckoningStatus?.active && (
+        <div className="bg-red-900/30 border-b-2 border-red-700">
+          <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-3">
+              <Skull className="w-5 h-5 text-red-400 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-display text-red-300 uppercase tracking-wide font-bold">
+                  A Reckoning Has Been Called
+                </p>
+                <p className="text-xs text-red-400/80">
+                  &ldquo;{reckoningStatus.grievance}&rdquo; — against {reckoningStatus.targetRace}
+                  {reckoningStatus.calledBy && ` — Called by ${reckoningStatus.calledBy}`}
+                  {reckoningStatus.endsAt && ` — Vote ends ${new Date(reckoningStatus.endsAt).toLocaleDateString()}`}
                 </p>
               </div>
             </div>

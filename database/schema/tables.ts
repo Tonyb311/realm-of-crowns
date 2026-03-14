@@ -2650,3 +2650,33 @@ export const referendumVotes = pgTable("referendum_votes", {
 	}).onUpdate("cascade").onDelete("cascade"),
 ]);
 
+// ============================================================
+// Town History Log (Seraphiel — historical records)
+// ============================================================
+
+export const townHistoryLog = pgTable("town_history_log", {
+	id: text().primaryKey().notNull(),
+	townId: text("town_id").notNull(),
+	eventType: text("event_type").notNull(), // 'ELECTION', 'LAW', 'REFERENDUM', 'MARTIAL_LAW', 'SUMMIT', 'RECKONING', 'BUILDING', 'TRADE'
+	title: text().notNull(),
+	description: text().notNull(),
+	involvedCharacterId: text("involved_character_id"),
+	involvedRace: text("involved_race"),
+	metadata: jsonb(),
+	occurredAt: timestamp("occurred_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	index("town_history_log_town_id_idx").using("btree", table.townId.asc().nullsLast().op("text_ops")),
+	index("town_history_log_event_type_idx").using("btree", table.eventType.asc().nullsLast().op("text_ops")),
+	index("town_history_log_occurred_at_idx").using("btree", table.occurredAt.asc().nullsLast()),
+	foreignKey({
+		columns: [table.townId],
+		foreignColumns: [towns.id],
+		name: "town_history_log_town_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.involvedCharacterId],
+		foreignColumns: [characters.id],
+		name: "town_history_log_involved_character_id_fkey"
+	}).onUpdate("cascade").onDelete("set null"),
+]);
+

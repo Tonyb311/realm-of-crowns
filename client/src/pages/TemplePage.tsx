@@ -517,6 +517,81 @@ export default function TemplePage() {
     },
   });
 
+  // Seraphiel: history, blood memory, reckoning
+  const isSeraphiel = patronGod?.id === 'seraphiel';
+  const seraphielChapter = chapters.find(ch => ch.godId === 'seraphiel');
+  const seraphielTier = seraphielChapter?.tier ?? 'MINORITY';
+  const canViewHistory = isSeraphiel; // MINORITY+
+  const canViewBloodMemory = isSeraphiel && seraphielTier !== 'MINORITY'; // CHAPTER+
+  const canInvokeBloodMemory = isSeraphiel && (seraphielTier === 'ESTABLISHED' || seraphielTier === 'DOMINANT');
+  const isSeraphielHP = chapters.some(ch => ch.godId === 'seraphiel' && ch.highPriestId === character?.id);
+  const hasSeraphielShrine = chapters.some(ch => ch.godId === 'seraphiel' && ch.isDominant && ch.isShrine);
+
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyFilter, setHistoryFilter] = useState('');
+  const [showBloodMemory, setShowBloodMemory] = useState(false);
+  const [invokeTargetRace, setInvokeTargetRace] = useState('');
+  const [invokeModifier, setInvokeModifier] = useState<'positive' | 'negative'>('positive');
+  const [reckoningTargetRace, setReckoningTargetRace] = useState('');
+  const [reckoningGrievance, setReckoningGrievance] = useState('');
+
+  const { data: historyData } = useQuery<{
+    events: Array<{
+      id: string; eventType: string; title: string; description: string;
+      involvedCharacter: { id: string; name: string } | null;
+      involvedRace: string | null; metadata: any; occurredAt: string;
+    }>;
+    page: number; limit: number; total: number; totalPages: number;
+  }>({
+    queryKey: ['temple', 'history', townId, historyPage, historyFilter],
+    queryFn: async () => (await api.get(`/temple/history/${townId}`, { params: { page: historyPage, limit: 15, eventType: historyFilter || undefined } })).data,
+    enabled: showHistory && canViewHistory && !!townId,
+  });
+
+  const { data: bloodMemoryData } = useQuery<{
+    racePairs: Array<{
+      raceA: string; raceB: string; avgReputation: number;
+      tension: 'HIGH' | 'MEDIUM' | 'LOW' | 'FRIENDLY'; interactions: number;
+    }>;
+    activeBloodMemory: { raceA: string; raceB: string; modifier: string; expiresAt: string } | null;
+  }>({
+    queryKey: ['temple', 'blood-memory', townId],
+    queryFn: async () => (await api.get(`/temple/blood-memory/${townId}`)).data,
+    enabled: showBloodMemory && canViewBloodMemory && !!townId,
+  });
+
+  const invokeBloodMemoryMutation = useMutation({
+    mutationFn: async (data: { townId: string; targetRace: string; modifier: string }) => {
+      return (await api.post('/temple/invoke-blood-memory', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple', 'blood-memory'] });
+      setInvokeTargetRace('');
+    },
+  });
+
+  const reckoningMutation = useMutation({
+    mutationFn: async (data: { townId: string; targetRace: string; grievance: string }) => {
+      return (await api.post('/temple/call-reckoning', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple'] });
+      setReckoningTargetRace('');
+      setReckoningGrievance('');
+    },
+  });
+
+  const { data: reckoningStatus } = useQuery<{
+    active: boolean; referendumId?: string; targetRace?: string;
+    grievance?: string; calledBy?: string; votesFor?: number;
+    votesAgainst?: number; endsAt?: string;
+  }>({
+    queryKey: ['temple', 'reckoning-status', townId],
+    queryFn: async () => (await api.get(`/temple/reckoning-status/${townId}`)).data,
+    enabled: !!townId,
+  });
+
   // Tessivane: price trends + cross-town prices
   const [showPriceTrends, setShowPriceTrends] = useState(false);
   const [showCrossTownPrices, setShowCrossTownPrices] = useState(false);
@@ -651,7 +726,7 @@ export default function TemplePage() {
                       <span className="text-[10px] uppercase tracking-wider text-realm-text-muted">Personal</span>
                       {Object.entries(personalBuffs).map(([key, val]) => {
                         const isReduction = key.includes('Reduction');
-                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown' || key === 'disputeResolution' || key === 'fileFormalDispute' || key === 'townGuardBonus';
+                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown' || key === 'disputeResolution' || key === 'fileFormalDispute' || key === 'townGuardBonus' || key === 'historicalRecordsAccess' || key === 'bloodMemory' || key === 'invokeBloodMemory' || key === 'grudgeTracking';
                         return (
                           <div key={key} className="flex items-center justify-between text-[11px]">
                             <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
@@ -668,7 +743,7 @@ export default function TemplePage() {
                       <span className="text-[10px] uppercase tracking-wider text-realm-text-muted">Town-wide ({dominant!.godName} dominance)</span>
                       {Object.entries(townBuffs).map(([key, val]) => {
                         const isReduction = key.includes('Reduction');
-                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown' || key === 'disputeResolution' || key === 'fileFormalDispute' || key === 'townGuardBonus';
+                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown' || key === 'disputeResolution' || key === 'fileFormalDispute' || key === 'townGuardBonus' || key === 'historicalRecordsAccess' || key === 'bloodMemory' || key === 'invokeBloodMemory' || key === 'grudgeTracking';
                         return (
                           <div key={key} className="flex items-center justify-between text-[11px]">
                             <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
@@ -1360,6 +1435,214 @@ export default function TemplePage() {
                 </p>
                 <p className="text-[10px] text-realm-text-muted">
                   Elections, impeachments, and referendums suspended until {new Date(martialLawStatus.endsAt!).toLocaleDateString()}
+                </p>
+              </div>
+            )}
+
+            {/* Seraphiel: Historical Records (MINORITY+) */}
+            {canViewHistory && (
+              <div className="rounded-lg border border-purple-500/30 bg-purple-500/5 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-display text-purple-300 flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-purple-300" />
+                    Historical Records
+                  </span>
+                  <button onClick={() => setShowHistory(!showHistory)} className="text-[10px] text-purple-300 hover:text-purple-200 font-display uppercase">
+                    {showHistory ? 'Hide' : 'View History'}
+                  </button>
+                </div>
+                {showHistory && (
+                  <div className="space-y-2">
+                    <div className="flex gap-1 flex-wrap">
+                      {['', 'ELECTION', 'LAW', 'REFERENDUM', 'MARTIAL_LAW', 'SUMMIT', 'RECKONING', 'BUILDING'].map(type => (
+                        <button
+                          key={type}
+                          onClick={() => { setHistoryFilter(type); setHistoryPage(1); }}
+                          className={`text-[10px] px-1.5 py-0.5 rounded-sm border ${historyFilter === type ? 'border-purple-400 text-purple-300 bg-purple-500/20' : 'border-realm-bg-600 text-realm-text-muted hover:text-realm-text-secondary'}`}
+                        >
+                          {type || 'All'}
+                        </button>
+                      ))}
+                    </div>
+                    {historyData?.events.map(evt => (
+                      <div key={evt.id} className="border-l-2 border-purple-500/30 pl-2 py-1">
+                        <p className="text-[11px] text-realm-text-primary">{evt.title}</p>
+                        <p className="text-[10px] text-realm-text-muted">{evt.description}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[9px] text-purple-400 uppercase">{evt.eventType}</span>
+                          <span className="text-[9px] text-realm-text-muted">{new Date(evt.occurredAt).toLocaleDateString()}</span>
+                          {evt.involvedCharacter && <span className="text-[9px] text-realm-text-secondary">— {evt.involvedCharacter.name}</span>}
+                        </div>
+                      </div>
+                    ))}
+                    {historyData && historyData.events.length === 0 && (
+                      <p className="text-[10px] text-realm-text-muted">No records found.</p>
+                    )}
+                    {historyData && historyData.totalPages > 1 && (
+                      <div className="flex items-center gap-2 justify-center">
+                        <button onClick={() => setHistoryPage(p => Math.max(1, p - 1))} disabled={historyPage <= 1} className="text-[10px] text-purple-300 disabled:text-realm-text-muted">Prev</button>
+                        <span className="text-[10px] text-realm-text-muted">{historyData.page} / {historyData.totalPages}</span>
+                        <button onClick={() => setHistoryPage(p => Math.min(historyData.totalPages, p + 1))} disabled={historyPage >= historyData.totalPages} className="text-[10px] text-purple-300 disabled:text-realm-text-muted">Next</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Seraphiel: Blood Memory (CHAPTER+) */}
+            {canViewBloodMemory && (
+              <div className="rounded-lg border border-purple-500/30 bg-purple-500/5 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-display text-purple-300 flex items-center gap-1.5">
+                    <Skull className="w-3.5 h-3.5 text-purple-300" />
+                    Blood Memory
+                  </span>
+                  <button onClick={() => setShowBloodMemory(!showBloodMemory)} className="text-[10px] text-purple-300 hover:text-purple-200 font-display uppercase">
+                    {showBloodMemory ? 'Hide' : 'View Tensions'}
+                  </button>
+                </div>
+                {showBloodMemory && bloodMemoryData && (
+                  <div className="space-y-2">
+                    {bloodMemoryData.activeBloodMemory && (
+                      <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg px-2 py-1.5">
+                        <p className="text-[10px] text-purple-300 font-semibold">Active Blood Memory</p>
+                        <p className="text-[9px] text-realm-text-muted">
+                          {bloodMemoryData.activeBloodMemory.modifier === 'positive' ? '+50%' : '-50%'} rep gains: {bloodMemoryData.activeBloodMemory.raceA} ↔ {bloodMemoryData.activeBloodMemory.raceB}
+                          {' '}— expires {new Date(bloodMemoryData.activeBloodMemory.expiresAt).toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                    {bloodMemoryData.racePairs.length === 0 ? (
+                      <p className="text-[10px] text-realm-text-muted">No racial interactions recorded in this town.</p>
+                    ) : bloodMemoryData.racePairs.map(pair => {
+                      const tensionColor = pair.tension === 'HIGH' ? 'text-red-400' : pair.tension === 'MEDIUM' ? 'text-orange-400' : pair.tension === 'FRIENDLY' ? 'text-green-400' : 'text-realm-text-muted';
+                      return (
+                        <div key={`${pair.raceA}-${pair.raceB}`} className="flex items-center justify-between text-[11px]">
+                          <span className="text-realm-text-secondary">{pair.raceA} ↔ {pair.raceB}</span>
+                          <div className="flex items-center gap-2">
+                            <span className={tensionColor}>{pair.tension}</span>
+                            <span className="text-realm-text-muted">({pair.avgReputation})</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {/* Invoke Blood Memory (ESTABLISHED+) */}
+                    {canInvokeBloodMemory && !bloodMemoryData.activeBloodMemory && (
+                      <div className="border-t border-purple-500/20 pt-2 space-y-1.5">
+                        <p className="text-[10px] text-realm-text-muted">Invoke a blood memory to alter reputation interactions for 24 hours.</p>
+                        <input
+                          type="text"
+                          placeholder="Target race (e.g. elf, dwarf)..."
+                          value={invokeTargetRace}
+                          onChange={e => setInvokeTargetRace(e.target.value)}
+                          className="w-full text-[11px] bg-realm-bg-800 border border-realm-bg-600 rounded px-2 py-1 text-realm-text-primary"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setInvokeModifier('positive')}
+                            className={`text-[10px] px-2 py-0.5 rounded border ${invokeModifier === 'positive' ? 'border-green-400 text-green-400 bg-green-500/10' : 'border-realm-bg-600 text-realm-text-muted'}`}
+                          >
+                            Positive (+50%)
+                          </button>
+                          <button
+                            onClick={() => setInvokeModifier('negative')}
+                            className={`text-[10px] px-2 py-0.5 rounded border ${invokeModifier === 'negative' ? 'border-red-400 text-red-400 bg-red-500/10' : 'border-realm-bg-600 text-realm-text-muted'}`}
+                          >
+                            Negative (-50%)
+                          </button>
+                        </div>
+                        <RealmButton
+                          variant="primary"
+                          size="sm"
+                          onClick={() => invokeBloodMemoryMutation.mutate({ townId: templeData!.townId, targetRace: invokeTargetRace, modifier: invokeModifier })}
+                          disabled={invokeBloodMemoryMutation.isPending || !invokeTargetRace.trim()}
+                          className="!bg-purple-600 hover:!bg-purple-700 !border-purple-500"
+                        >
+                          {invokeBloodMemoryMutation.isPending ? 'Invoking...' : 'Invoke Blood Memory'}
+                        </RealmButton>
+                        {invokeBloodMemoryMutation.isError && (
+                          <p className="text-[11px] text-realm-danger">{(invokeBloodMemoryMutation.error as any)?.response?.data?.error || 'Failed'}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Seraphiel: Reckoning (HP with Shrine) */}
+            {isSeraphielHP && hasSeraphielShrine && (
+              <div className="rounded-lg border border-red-700/40 bg-red-900/10 p-3 space-y-2">
+                <span className="text-xs font-display text-red-300 flex items-center gap-1.5">
+                  <Skull className="w-3.5 h-3.5 text-red-400" />
+                  The Reckoning
+                </span>
+                <p className="text-[11px] text-realm-text-muted">
+                  Demand justice for a historical wrong. The entire town votes. If passed, targeted race suffers -10 reputation with all residents. If failed, 10% of Seraphiel members lose their faith. Cost: {100}g. 30-day cooldown.
+                </p>
+                {reckoningStatus?.active ? (
+                  <div className="bg-red-800/20 border border-red-600/40 rounded-lg px-3 py-2">
+                    <p className="text-[11px] text-red-300 font-semibold uppercase">Reckoning Active</p>
+                    <p className="text-[10px] text-realm-text-muted">
+                      Against {reckoningStatus.targetRace}: &ldquo;{reckoningStatus.grievance}&rdquo;
+                    </p>
+                    <p className="text-[10px] text-realm-text-muted">
+                      Votes: {reckoningStatus.votesFor} for / {reckoningStatus.votesAgainst} against — ends {new Date(reckoningStatus.endsAt!).toLocaleDateString()}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <input
+                      type="text"
+                      placeholder="Target race (e.g. elf, orc)..."
+                      value={reckoningTargetRace}
+                      onChange={e => setReckoningTargetRace(e.target.value)}
+                      className="w-full text-[11px] bg-realm-bg-800 border border-realm-bg-600 rounded px-2 py-1 text-realm-text-primary"
+                    />
+                    <textarea
+                      placeholder="State the grievance..."
+                      value={reckoningGrievance}
+                      onChange={e => setReckoningGrievance(e.target.value)}
+                      className="w-full text-[11px] bg-realm-bg-800 border border-realm-bg-600 rounded px-2 py-1 text-realm-text-primary h-16 resize-none"
+                    />
+                    <div className="bg-red-500/10 border border-red-500/30 rounded px-2 py-1">
+                      <p className="text-[10px] text-red-400 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        WARNING: If this Reckoning fails, 10% of Seraphiel followers in this town will lose their faith.
+                      </p>
+                    </div>
+                    <RealmButton
+                      variant="primary"
+                      size="sm"
+                      onClick={() => reckoningMutation.mutate({ townId: templeData!.townId, targetRace: reckoningTargetRace, grievance: reckoningGrievance })}
+                      disabled={reckoningMutation.isPending || !reckoningTargetRace.trim() || !reckoningGrievance.trim()}
+                      className="!bg-red-700 hover:!bg-red-800 !border-red-600"
+                    >
+                      {reckoningMutation.isPending ? 'Calling...' : 'Call a Reckoning (100g)'}
+                    </RealmButton>
+                  </div>
+                )}
+                {reckoningMutation.isSuccess && (
+                  <p className="text-[11px] text-red-300">{reckoningMutation.data.message}</p>
+                )}
+                {reckoningMutation.isError && (
+                  <p className="text-[11px] text-realm-danger">
+                    {(reckoningMutation.error as any)?.response?.data?.error || 'Failed to call Reckoning'}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Reckoning Active Banner (non-HP Seraphiel members) */}
+            {!isSeraphielHP && reckoningStatus?.active && (
+              <div className="bg-red-800/20 border border-red-600/40 rounded-lg px-3 py-2">
+                <p className="text-[11px] text-red-300 font-semibold uppercase flex items-center gap-1.5">
+                  <Skull className="w-3 h-3" />
+                  A Reckoning Has Been Called
+                </p>
+                <p className="text-[10px] text-realm-text-muted">
+                  Against {reckoningStatus.targetRace}: &ldquo;{reckoningStatus.grievance}&rdquo; — Vote at the Town Hall
                 </p>
               </div>
             )}

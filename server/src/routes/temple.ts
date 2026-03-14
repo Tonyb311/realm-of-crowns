@@ -1,7 +1,7 @@
 import { Router, type Response } from 'express';
 import { eq, and, ne, sql, asc, desc, count, gte, gt, lte, inArray } from 'drizzle-orm';
 import { db } from '../lib/db';
-import { gods, churchChapters, characters, towns, elections, electionCandidates, characterActiveEffects, townPolicies, townTreasuries, priceHistories, itemTemplates, travelRoutes, racialReputations, disputes, referendums, referendumVotes } from '@database/tables';
+import { gods, churchChapters, characters, towns, elections, electionCandidates, characterActiveEffects, townPolicies, townTreasuries, priceHistories, itemTemplates, travelRoutes, racialReputations, disputes, referendums, referendumVotes, townHistoryLog } from '@database/tables';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
 import { characterGuard } from '../middleware/character-guard';
@@ -12,6 +12,7 @@ import { SHRINE_CONSECRATION_COST } from '@shared/data/town-metrics-config';
 import { emitGovernanceEvent, getIO } from '../socket/events';
 import { getReputationTier } from '@shared/data/reputation-config';
 import { isTownUnderMartialLaw } from '../services/religion-buffs';
+import { logTownEvent } from '../services/history-logger';
 import crypto from 'crypto';
 
 const POLICY_BYPASS_COOLDOWN_DAYS = 30;
@@ -24,6 +25,11 @@ const MAX_OPEN_DISPUTES = 3;
 const MARTIAL_LAW_COOLDOWN_DAYS = 30;
 const MARTIAL_LAW_DURATION_DAYS = 7;
 const MARTIAL_LAW_COST = 300;
+const BLOOD_MEMORY_DURATION_HOURS = 24;
+const BLOOD_MEMORY_COOLDOWN_DAYS = 7;
+const RECKONING_COOLDOWN_DAYS = 30;
+const RECKONING_COST = 100;
+const RECKONING_DURATION_DAYS = 3;
 
 const router = Router();
 
@@ -402,6 +408,9 @@ router.post('/consecrate', authGuard, characterGuard, async (req: AuthenticatedR
         })
         .where(eq(churchChapters.id, chapter.id));
     });
+
+    // Fire-and-forget historical logging
+    logTownEvent(townId, 'BUILDING', `Temple Shrine Consecrated to ${character.patronGodId}`, `${character.name} consecrated a shrine for ${SHRINE_CONSECRATION_COST}g.`, character.id).catch(() => {});
 
     return res.json({
       success: true,
@@ -793,6 +802,9 @@ router.post('/propose-economic-policy', authGuard, characterGuard, async (req: A
         },
       })
       .where(eq(townPolicies.townId, townId));
+
+    // Fire-and-forget historical logging
+    logTownEvent(townId, 'LAW', `Economic Policy Enacted by ${character.name}`, description, character.id).catch(() => {});
 
     return res.json({
       success: true,
@@ -1187,6 +1199,9 @@ router.post('/diplomatic-summit', authGuard, characterGuard, async (req: Authent
       where: inArray(towns.id, [townId, ...adjacentTownIds]),
       columns: { id: true, name: true },
     });
+
+    // Fire-and-forget historical logging
+    logTownEvent(townId, 'SUMMIT', `Diplomatic Summit Hosted by ${character.name}`, `Reputation gains boosted for ${SUMMIT_DURATION_DAYS} days across ${affectedTowns.length} towns.`, character.id).catch(() => {});
 
     return res.json({
       success: true,
@@ -1705,6 +1720,9 @@ router.post('/declare-martial-law', authGuard, characterGuard, async (req: Authe
       declaredBy: character.name,
     });
 
+    // Fire-and-forget historical logging
+    logTownEvent(townId, 'MARTIAL_LAW', `Martial Law Declared by ${character.name}`, `Martial law imposed for ${MARTIAL_LAW_DURATION_DAYS} days. All elections, impeachments, and referendums suspended.`, character.id).catch(() => {});
+
     return res.json({ message: 'Martial law declared', endsAt: endsAt.toISOString() });
   } catch (error) {
     if (handleDbError(error, res, 'temple-declare-martial-law', req)) return;
@@ -1743,6 +1761,381 @@ router.get('/martial-law-status/:townId', async (req: AuthenticatedRequest, res:
   } catch (error) {
     if (handleDbError(error, res, 'temple-martial-law-status', req)) return;
     logRouteError(req, 500, 'Temple martial law status error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// Seraphiel: Historical Records, Blood Memory, Reckoning
+// ============================================================
+
+// GET /api/temple/history/:townId — View historical records (Seraphiel MINORITY+)
+router.get('/history/:townId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId } = req.params;
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20));
+    const eventType = req.query.eventType as string | undefined;
+
+    // Must be Seraphiel member (any tier = MINORITY+)
+    if (character.patronGodId !== 'seraphiel') {
+      return res.status(403).json({ error: 'Only followers of Seraphiel may access the historical records' });
+    }
+
+    const conditions: any[] = [eq(townHistoryLog.townId, townId)];
+    if (eventType) {
+      conditions.push(eq(townHistoryLog.eventType, eventType));
+    }
+
+    const offset = (page - 1) * limit;
+
+    const events = await db.query.townHistoryLog.findMany({
+      where: and(...conditions),
+      orderBy: desc(townHistoryLog.occurredAt),
+      limit,
+      offset,
+      with: {
+        involvedCharacter: { columns: { id: true, name: true } },
+      },
+    });
+
+    const [{ value: total }] = await db
+      .select({ value: count() })
+      .from(townHistoryLog)
+      .where(and(...conditions));
+
+    return res.json({
+      events: events.map(e => ({
+        id: e.id,
+        eventType: e.eventType,
+        title: e.title,
+        description: e.description,
+        involvedCharacter: e.involvedCharacter,
+        involvedRace: e.involvedRace,
+        metadata: e.metadata,
+        occurredAt: e.occurredAt,
+      })),
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-history', req)) return;
+    logRouteError(req, 500, 'Temple history error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/temple/blood-memory/:townId — View blood memory (Seraphiel CHAPTER+)
+router.get('/blood-memory/:townId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId } = req.params;
+
+    // Must be Seraphiel CHAPTER+
+    if (character.patronGodId !== 'seraphiel') {
+      return res.status(403).json({ error: 'Only followers of Seraphiel may access blood memory' });
+    }
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(eq(churchChapters.godId, 'seraphiel'), eq(churchChapters.townId, character.homeTownId ?? '')),
+      columns: { tier: true },
+    });
+    const tier = chapter?.tier ?? 'MINORITY';
+    if (tier === 'MINORITY') {
+      return res.status(403).json({ error: 'Blood memory requires CHAPTER tier or higher' });
+    }
+
+    // Aggregate racial reputations for characters in this town
+    const townCharacters = await db.query.characters.findMany({
+      where: eq(characters.homeTownId, townId),
+      columns: { id: true, race: true },
+    });
+    const charIds = townCharacters.map(c => c.id);
+    const charRaceMap = new Map(townCharacters.map(c => [c.id, c.race]));
+
+    if (charIds.length === 0) {
+      return res.json({ racePairs: [], activeBloodMemory: null });
+    }
+
+    const reps = await db.query.racialReputations.findMany({
+      where: inArray(racialReputations.characterId, charIds),
+    });
+
+    // Group by race pair (characterRace ↔ targetRace)
+    const pairMap = new Map<string, { total: number; count: number }>();
+    for (const rep of reps) {
+      const charRace = charRaceMap.get(rep.characterId);
+      if (!charRace) continue;
+      const races = [charRace, rep.race].sort();
+      const key = `${races[0]}:${races[1]}`;
+      const existing = pairMap.get(key) ?? { total: 0, count: 0 };
+      existing.total += rep.score;
+      existing.count += 1;
+      pairMap.set(key, existing);
+    }
+
+    const racePairs = Array.from(pairMap.entries()).map(([key, data]) => {
+      const [raceA, raceB] = key.split(':');
+      const avgReputation = Math.round(data.total / data.count);
+      let tension: 'HIGH' | 'MEDIUM' | 'LOW' | 'FRIENDLY' = 'LOW';
+      if (avgReputation <= -30) tension = 'HIGH';
+      else if (avgReputation <= -10) tension = 'MEDIUM';
+      else if (avgReputation >= 10) tension = 'FRIENDLY';
+      return { raceA, raceB, avgReputation, tension, interactions: data.count };
+    }).sort((a, b) => a.avgReputation - b.avgReputation);
+
+    // Check active blood memory
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+      columns: { tradePolicy: true },
+    });
+    const tp = policy?.tradePolicy as Record<string, any> | null;
+    let activeBloodMemory = null;
+    if (tp?.bloodMemoryUntil && new Date(tp.bloodMemoryUntil) > new Date()) {
+      activeBloodMemory = {
+        raceA: tp.bloodMemoryRaceA,
+        raceB: tp.bloodMemoryRaceB,
+        modifier: tp.bloodMemoryModifier,
+        expiresAt: tp.bloodMemoryUntil,
+      };
+    }
+
+    return res.json({ racePairs, activeBloodMemory });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-blood-memory', req)) return;
+    logRouteError(req, 500, 'Temple blood memory error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/temple/invoke-blood-memory — Invoke Blood Memory (Seraphiel ESTABLISHED+)
+router.post('/invoke-blood-memory', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId, targetRace, modifier } = req.body as { townId: string; targetRace: string; modifier: 'positive' | 'negative' };
+
+    if (!townId || !targetRace || !modifier) {
+      return res.status(400).json({ error: 'townId, targetRace, and modifier are required' });
+    }
+    if (modifier !== 'positive' && modifier !== 'negative') {
+      return res.status(400).json({ error: 'modifier must be "positive" or "negative"' });
+    }
+
+    // Must be Seraphiel ESTABLISHED+
+    if (character.patronGodId !== 'seraphiel') {
+      return res.status(403).json({ error: 'Only followers of Seraphiel may invoke blood memory' });
+    }
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(eq(churchChapters.godId, 'seraphiel'), eq(churchChapters.townId, character.homeTownId ?? '')),
+      columns: { tier: true },
+    });
+    const tier = chapter?.tier ?? 'MINORITY';
+    if (tier === 'MINORITY' || tier === 'CHAPTER') {
+      return res.status(403).json({ error: 'Invoking blood memory requires ESTABLISHED tier or higher' });
+    }
+
+    // Check if there's already an active blood memory in this town
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+    });
+    const tp = (policy?.tradePolicy as Record<string, any>) || {};
+    if (tp.bloodMemoryUntil && new Date(tp.bloodMemoryUntil) > new Date()) {
+      return res.status(400).json({ error: 'A blood memory is already active in this town' });
+    }
+
+    // Check 7-day per-character cooldown
+    const cooldownKey = `bloodMemoryCooldown_${character.id}`;
+    if (tp[cooldownKey]) {
+      const lastInvoke = new Date(tp[cooldownKey]);
+      const cooldownEnd = new Date(lastInvoke.getTime() + BLOOD_MEMORY_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
+      if (new Date() < cooldownEnd) {
+        return res.status(400).json({
+          error: `Blood memory cooldown active until ${cooldownEnd.toISOString().split('T')[0]}`,
+          cooldownEndsAt: cooldownEnd.toISOString(),
+        });
+      }
+    }
+
+    // Set blood memory in tradePolicy JSONB
+    const expiresAt = new Date(Date.now() + BLOOD_MEMORY_DURATION_HOURS * 60 * 60 * 1000).toISOString();
+    const newTp = {
+      ...tp,
+      bloodMemoryUntil: expiresAt,
+      bloodMemoryRaceA: character.race,
+      bloodMemoryRaceB: targetRace,
+      bloodMemoryModifier: modifier,
+      [cooldownKey]: new Date().toISOString(),
+    };
+
+    if (policy) {
+      await db.update(townPolicies).set({ tradePolicy: newTp }).where(eq(townPolicies.townId, townId));
+    } else {
+      await db.insert(townPolicies).values({ id: crypto.randomUUID(), townId, tradePolicy: newTp });
+    }
+
+    // Fire-and-forget historical logging
+    logTownEvent(townId, 'SUMMIT', `Blood Memory Invoked by ${character.name}`, `${modifier === 'positive' ? 'Positive' : 'Negative'} blood memory invoked between ${character.race} and ${targetRace} for ${BLOOD_MEMORY_DURATION_HOURS} hours.`, character.id, targetRace).catch(() => {});
+
+    return res.json({
+      success: true,
+      message: `Blood memory invoked — ${modifier} modifier on ${character.race}↔${targetRace} interactions for ${BLOOD_MEMORY_DURATION_HOURS}h`,
+      expiresAt,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-invoke-blood-memory', req)) return;
+    logRouteError(req, 500, 'Temple invoke blood memory error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/temple/call-reckoning — Call a Reckoning (Seraphiel HP with Shrine)
+router.post('/call-reckoning', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId, targetRace, grievance } = req.body as { townId: string; targetRace: string; grievance: string };
+
+    if (!townId || !targetRace || !grievance) {
+      return res.status(400).json({ error: 'townId, targetRace, and grievance are required' });
+    }
+
+    // Must be HP of dominant Seraphiel chapter with shrine
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(
+        eq(churchChapters.godId, 'seraphiel'),
+        eq(churchChapters.townId, townId),
+      ),
+    });
+    if (!chapter) {
+      return res.status(400).json({ error: 'No Seraphiel chapter in this town' });
+    }
+    if (chapter.highPriestId !== character.id) {
+      return res.status(403).json({ error: 'Only the High Priest of Seraphiel can call a Reckoning' });
+    }
+    if (!chapter.isDominant) {
+      return res.status(400).json({ error: 'Seraphiel must be the dominant church' });
+    }
+    if (!chapter.isShrine) {
+      return res.status(400).json({ error: 'The Seraphiel shrine must be consecrated' });
+    }
+
+    // Check martial law
+    if (await isTownUnderMartialLaw(townId)) {
+      return res.status(400).json({ error: 'Cannot call a Reckoning during martial law' });
+    }
+
+    // Check cooldown (30 days)
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+    });
+    const tp = (policy?.tradePolicy as Record<string, any>) || {};
+    if (tp.seraphielReckoningAt) {
+      const lastReckoning = new Date(tp.seraphielReckoningAt);
+      const cooldownEnd = new Date(lastReckoning.getTime() + RECKONING_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
+      if (new Date() < cooldownEnd) {
+        return res.status(400).json({
+          error: `Reckoning cooldown active until ${cooldownEnd.toISOString().split('T')[0]}`,
+          cooldownEndsAt: cooldownEnd.toISOString(),
+        });
+      }
+    }
+
+    // Check treasury
+    if (chapter.treasury < RECKONING_COST) {
+      return res.status(400).json({ error: `Church treasury needs at least ${RECKONING_COST}g (has ${chapter.treasury}g)` });
+    }
+
+    // Deduct cost
+    await db.update(churchChapters).set({
+      treasury: chapter.treasury - RECKONING_COST,
+    }).where(eq(churchChapters.id, chapter.id));
+
+    // Create a referendum with policyType='RECKONING'
+    const now = new Date();
+    const endsAt = new Date(now.getTime() + RECKONING_DURATION_DAYS * 24 * 60 * 60 * 1000);
+
+    const [referendum] = await db.insert(referendums).values({
+      id: crypto.randomUUID(),
+      townId,
+      proposedById: character.id,
+      question: `Reckoning: ${grievance} — Shall we hold ${targetRace} accountable?`,
+      policyType: 'RECKONING',
+      policyValue: { targetRace, grievance, penalty: -10 },
+      status: 'VOTING',
+      startedAt: now.toISOString(),
+      endsAt: endsAt.toISOString(),
+    }).returning();
+
+    // Set cooldown in tradePolicy
+    const newTp = { ...tp, seraphielReckoningAt: now.toISOString() };
+    if (policy) {
+      await db.update(townPolicies).set({ tradePolicy: newTp }).where(eq(townPolicies.townId, townId));
+    } else {
+      await db.insert(townPolicies).values({ id: crypto.randomUUID(), townId, tradePolicy: newTp });
+    }
+
+    // Socket event
+    getIO().emit('reckoning:called', {
+      townId,
+      referendumId: referendum.id,
+      targetRace,
+      grievance,
+      calledBy: character.name,
+      endsAt: endsAt.toISOString(),
+    });
+
+    // Fire-and-forget historical logging
+    logTownEvent(townId, 'RECKONING', `Reckoning Called Against ${targetRace}`, `${character.name} called a Reckoning: "${grievance}". Town-wide vote for ${RECKONING_DURATION_DAYS} days.`, character.id, targetRace, { grievance, penalty: -10 }).catch(() => {});
+
+    return res.json({
+      success: true,
+      message: `Reckoning called! The town will vote for ${RECKONING_DURATION_DAYS} days.`,
+      referendumId: referendum.id,
+      endsAt: endsAt.toISOString(),
+      cost: RECKONING_COST,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-call-reckoning', req)) return;
+    logRouteError(req, 500, 'Temple call reckoning error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/temple/reckoning-status/:townId — Check if a Reckoning is active
+router.get('/reckoning-status/:townId', async (req, res: Response) => {
+  try {
+    const { townId } = req.params;
+
+    const activeReckoning = await db.query.referendums.findFirst({
+      where: and(
+        eq(referendums.townId, townId),
+        eq(referendums.policyType, 'RECKONING'),
+        eq(referendums.status, 'VOTING'),
+      ),
+      with: {
+        proposedBy: { columns: { id: true, name: true } },
+      },
+    });
+
+    if (!activeReckoning) {
+      return res.json({ active: false });
+    }
+
+    const pv = activeReckoning.policyValue as Record<string, any>;
+    return res.json({
+      active: true,
+      referendumId: activeReckoning.id,
+      targetRace: pv.targetRace,
+      grievance: pv.grievance,
+      calledBy: activeReckoning.proposedBy?.name,
+      votesFor: activeReckoning.votesFor,
+      votesAgainst: activeReckoning.votesAgainst,
+      endsAt: activeReckoning.endsAt,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-reckoning-status', req)) return;
+    logRouteError(req, 500, 'Temple reckoning status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
