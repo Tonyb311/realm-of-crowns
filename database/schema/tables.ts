@@ -2841,3 +2841,70 @@ export const travelLogs = pgTable("travel_logs", {
 	}).onUpdate("cascade").onDelete("cascade"),
 ]);
 
+// ============================================================
+// TOWN TREATIES
+// ============================================================
+
+export const townTreaties = pgTable("town_treaties", {
+	id: text().primaryKey().notNull(),
+	townAId: text("town_a_id").notNull(),
+	townBId: text("town_b_id").notNull(),
+	proposedById: text("proposed_by_id"),
+	treatyType: text("treaty_type").notNull(),
+	terms: jsonb().notNull().default({}),
+	status: text().notNull().default('PROPOSED'),
+	duration: integer().notNull().default(30),
+	townAVotesFor: integer("town_a_votes_for").notNull().default(0),
+	townAVotesAgainst: integer("town_a_votes_against").notNull().default(0),
+	townBVotesFor: integer("town_b_votes_for").notNull().default(0),
+	townBVotesAgainst: integer("town_b_votes_against").notNull().default(0),
+	ratificationEndsAt: timestamp("ratification_ends_at", { precision: 3, mode: 'string' }),
+	activatedAt: timestamp("activated_at", { precision: 3, mode: 'string' }),
+	expiresAt: timestamp("expires_at", { precision: 3, mode: 'string' }),
+	cancelledAt: timestamp("cancelled_at", { precision: 3, mode: 'string' }),
+	cancelNoticeUntil: timestamp("cancel_notice_until", { precision: 3, mode: 'string' }),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).notNull().$onUpdate(() => new Date().toISOString()),
+}, (table) => [
+	index("town_treaties_town_a_id_idx").using("btree", table.townAId.asc().nullsLast().op("text_ops")),
+	index("town_treaties_town_b_id_idx").using("btree", table.townBId.asc().nullsLast().op("text_ops")),
+	index("town_treaties_status_idx").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	foreignKey({
+		columns: [table.townAId],
+		foreignColumns: [towns.id],
+		name: "town_treaties_town_a_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.townBId],
+		foreignColumns: [towns.id],
+		name: "town_treaties_town_b_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.proposedById],
+		foreignColumns: [characters.id],
+		name: "town_treaties_proposed_by_id_fkey"
+	}).onUpdate("cascade").onDelete("set null"),
+]);
+
+export const townTreatyVotes = pgTable("town_treaty_votes", {
+	id: text().primaryKey().notNull(),
+	treatyId: text("treaty_id").notNull(),
+	characterId: text("character_id").notNull(),
+	townId: text("town_id").notNull(),
+	vote: boolean().notNull(),
+	votedAt: timestamp("voted_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	uniqueIndex("town_treaty_votes_treaty_character_key").using("btree", table.treatyId.asc().nullsLast().op("text_ops"), table.characterId.asc().nullsLast().op("text_ops")),
+	index("town_treaty_votes_treaty_id_idx").using("btree", table.treatyId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+		columns: [table.treatyId],
+		foreignColumns: [townTreaties.id],
+		name: "town_treaty_votes_treaty_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.characterId],
+		foreignColumns: [characters.id],
+		name: "town_treaty_votes_character_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+]);
+

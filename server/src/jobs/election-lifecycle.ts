@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import { db } from '../lib/db';
 import { eq, lte, and, ne, count, desc, sql, isNull, gte } from 'drizzle-orm';
-import { elections, electionVotes, towns, characters, impeachments, kingdoms, churchChapters, gods, referendums, townPolicies, townTreasuries, racialReputations } from '@database/tables';
+import { elections, electionVotes, towns, characters, impeachments, kingdoms, churchChapters, gods, referendums, townPolicies, townTreasuries, racialReputations, townTreaties, councilMembers } from '@database/tables';
 import { logger } from '../lib/logger';
 import { cronJobExecutions } from '../lib/metrics';
 import type { Server } from 'socket.io';
@@ -46,6 +46,8 @@ export function startElectionLifecycle(io: Server) {
       await resolveExpiredReferendums(io, martialLawTowns);
       await expireMartialLaw(io);
       await expireCrisesOfFaith(io);
+      await resolveExpiredTreatyRatifications(io);
+      await processTreatyLifecycle(io);
       cronJobExecutions.inc({ job: 'electionLifecycle', result: 'success' });
     } catch (error: unknown) {
       cronJobExecutions.inc({ job: 'electionLifecycle', result: 'failure' });
@@ -921,5 +923,143 @@ async function expireCrisesOfFaith(io: Server) {
       undefined,
       { targetGodId: crisis.targetGodId, targetChurchName: targetGod?.churchName },
     ).catch(() => {});
+  }
+}
+
+// =========================================================================
+// Treaty Ratification Resolution
+// =========================================================================
+
+async function resolveExpiredTreatyRatifications(io: Server) {
+  const now = new Date();
+  const nowStr = now.toISOString();
+
+  const expiredRats = await db.query.townTreaties.findMany({
+    where: and(
+      eq(townTreaties.status, 'PENDING_RATIFICATION'),
+      lte(townTreaties.ratificationEndsAt, nowStr),
+    ),
+    with: {
+      townA: { columns: { id: true, name: true } },
+      townB: { columns: { id: true, name: true } },
+    },
+  });
+
+  if (expiredRats.length === 0) return;
+
+  const { applyTreatyEffects } = await import('../services/treaty-effects');
+
+  for (const treaty of expiredRats) {
+    try {
+      // Check council counts for auto-pass logic
+      const [townACouncil, townBCouncil] = await Promise.all([
+        db.select({ count: count() }).from(councilMembers).where(eq(councilMembers.townId, treaty.townAId)),
+        db.select({ count: count() }).from(councilMembers).where(eq(councilMembers.townId, treaty.townBId)),
+      ]);
+
+      const townAHasCouncil = (townACouncil[0]?.count ?? 0) > 0;
+      const townBHasCouncil = (townBCouncil[0]?.count ?? 0) > 0;
+
+      // No-council towns auto-pass
+      const townAPassed = !townAHasCouncil || treaty.townAVotesFor > treaty.townAVotesAgainst;
+      const townBPassed = !townBHasCouncil || treaty.townBVotesFor > treaty.townBVotesAgainst;
+
+      const typeName = treaty.treatyType;
+
+      if (townAPassed && townBPassed) {
+        const expiresAt = new Date(now.getTime() + treaty.duration * 24 * 60 * 60 * 1000).toISOString();
+        await db.update(townTreaties).set({
+          status: 'ACTIVE', activatedAt: nowStr, expiresAt,
+        }).where(eq(townTreaties.id, treaty.id));
+
+        await applyTreatyEffects(treaty);
+
+        logTownEvent(treaty.townAId, 'GOVERNANCE', `Treaty Ratified: ${typeName}`, `${typeName} with ${treaty.townB.name} has been ratified and is now active`, undefined).catch(() => {});
+        logTownEvent(treaty.townBId, 'GOVERNANCE', `Treaty Ratified: ${typeName}`, `${typeName} with ${treaty.townA.name} has been ratified and is now active`, undefined).catch(() => {});
+
+        try {
+          io.to(`town:${treaty.townAId}`).emit('treaty:activated', { treatyId: treaty.id, typeName });
+          io.to(`town:${treaty.townBId}`).emit('treaty:activated', { treatyId: treaty.id, typeName });
+        } catch { /* socket not critical */ }
+      } else {
+        await db.update(townTreaties).set({ status: 'REJECTED' }).where(eq(townTreaties.id, treaty.id));
+
+        const reason = !townAPassed && !townBPassed ? 'both towns rejected'
+          : !townAPassed ? `${treaty.townA.name} rejected` : `${treaty.townB.name} rejected`;
+        logTownEvent(treaty.townAId, 'GOVERNANCE', `Treaty Rejected: ${typeName}`, `${typeName} ratification failed — ${reason}`, undefined).catch(() => {});
+        logTownEvent(treaty.townBId, 'GOVERNANCE', `Treaty Rejected: ${typeName}`, `${typeName} ratification failed — ${reason}`, undefined).catch(() => {});
+      }
+    } catch (err) {
+      logger.error({ job: 'electionLifecycle', err: err instanceof Error ? err.message : String(err), treatyId: treaty.id }, 'Treaty ratification resolution error');
+    }
+  }
+
+  logger.info({ job: 'electionLifecycle', count: expiredRats.length }, 'Treaty ratifications resolved');
+}
+
+// =========================================================================
+// Treaty Lifecycle — Expire + Complete Cancellations
+// =========================================================================
+
+async function processTreatyLifecycle(io: Server) {
+  const now = new Date();
+  const nowStr = now.toISOString();
+
+  const { removeTreatyEffects } = await import('../services/treaty-effects');
+
+  // 1. Expire active treaties past their expiry date
+  const expired = await db.query.townTreaties.findMany({
+    where: and(eq(townTreaties.status, 'ACTIVE'), lte(townTreaties.expiresAt, nowStr)),
+    with: {
+      townA: { columns: { id: true, name: true } },
+      townB: { columns: { id: true, name: true } },
+    },
+  });
+
+  for (const treaty of expired) {
+    try {
+      await db.update(townTreaties).set({ status: 'EXPIRED' }).where(eq(townTreaties.id, treaty.id));
+      await removeTreatyEffects(treaty);
+
+      logTownEvent(treaty.townAId, 'GOVERNANCE', `Treaty Expired: ${treaty.treatyType}`, `${treaty.treatyType} with ${treaty.townB.name} has expired`, undefined).catch(() => {});
+      logTownEvent(treaty.townBId, 'GOVERNANCE', `Treaty Expired: ${treaty.treatyType}`, `${treaty.treatyType} with ${treaty.townA.name} has expired`, undefined).catch(() => {});
+
+      try {
+        io.to(`town:${treaty.townAId}`).emit('treaty:expired', { treatyId: treaty.id });
+        io.to(`town:${treaty.townBId}`).emit('treaty:expired', { treatyId: treaty.id });
+      } catch { /* socket not critical */ }
+    } catch (err) {
+      logger.error({ job: 'electionLifecycle', err: err instanceof Error ? err.message : String(err), treatyId: treaty.id }, 'Treaty expiry error');
+    }
+  }
+
+  // 2. Complete cancelling treaties past notice period
+  const cancelled = await db.query.townTreaties.findMany({
+    where: and(eq(townTreaties.status, 'CANCELLING'), lte(townTreaties.cancelNoticeUntil, nowStr)),
+    with: {
+      townA: { columns: { id: true, name: true } },
+      townB: { columns: { id: true, name: true } },
+    },
+  });
+
+  for (const treaty of cancelled) {
+    try {
+      await db.update(townTreaties).set({ status: 'CANCELLED', cancelledAt: nowStr }).where(eq(townTreaties.id, treaty.id));
+      await removeTreatyEffects(treaty);
+
+      logTownEvent(treaty.townAId, 'GOVERNANCE', `Treaty Cancelled: ${treaty.treatyType}`, `${treaty.treatyType} with ${treaty.townB.name} has been cancelled after notice period`, undefined).catch(() => {});
+      logTownEvent(treaty.townBId, 'GOVERNANCE', `Treaty Cancelled: ${treaty.treatyType}`, `${treaty.treatyType} with ${treaty.townA.name} has been cancelled after notice period`, undefined).catch(() => {});
+
+      try {
+        io.to(`town:${treaty.townAId}`).emit('treaty:cancelled', { treatyId: treaty.id });
+        io.to(`town:${treaty.townBId}`).emit('treaty:cancelled', { treatyId: treaty.id });
+      } catch { /* socket not critical */ }
+    } catch (err) {
+      logger.error({ job: 'electionLifecycle', err: err instanceof Error ? err.message : String(err), treatyId: treaty.id }, 'Treaty cancellation error');
+    }
+  }
+
+  if (expired.length > 0 || cancelled.length > 0) {
+    logger.info({ job: 'electionLifecycle', expired: expired.length, cancelled: cancelled.length }, 'Treaty lifecycle processed');
   }
 }

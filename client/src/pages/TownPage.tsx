@@ -285,6 +285,14 @@ export default function TownPage() {
     staleTime: 60000,
   });
 
+  // Fetch active treaty count
+  const { data: treatyInfo } = useQuery<{ activeCount: number; active: { typeName: string; partnerTown: { name: string } }[] }>({
+    queryKey: ['treaties', 'summary', townId],
+    queryFn: async () => (await api.get(`/treaties/town/${townId}`)).data,
+    enabled: !!townId,
+    staleTime: 120000,
+  });
+
   // Subscribe to player enter/leave town events for live updates
   useEffect(() => {
     if (!townId) return;
@@ -648,6 +656,20 @@ export default function TownPage() {
                   </span>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Active Treaties Indicator */}
+      {(treatyInfo?.activeCount ?? 0) > 0 && (
+        <div className="bg-realm-teal-300/5 border-b border-realm-teal-300/20">
+          <div className="max-w-7xl mx-auto px-4 py-2 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-2 text-xs text-realm-teal-300">
+              <span className="font-display">{treatyInfo!.activeCount} active treat{treatyInfo!.activeCount === 1 ? 'y' : 'ies'}</span>
+              <span className="text-realm-text-muted">
+                — {treatyInfo!.active.map(t => `${t.typeName} with ${t.partnerTown.name}`).join(', ')}
+              </span>
             </div>
           </div>
         </div>

@@ -53,6 +53,7 @@ import codexRouter from './codex';
 import inventoryRouter from './inventory';
 import noticeBoardRouter from './notice-board';
 import blackMarketRouter from './black-market';
+import treatiesRouter from './treaties';
 
 const router = Router();
 
@@ -111,5 +112,6 @@ router.use('/notice-board', noticeBoardRouter);
 router.use('/temple', templeRouter);
 router.use('/town-metrics', townMetricsRouter);
 router.use('/black-market', blackMarketRouter);
+router.use('/treaties', treatiesRouter);
 
 export default router;

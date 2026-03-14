@@ -1629,6 +1629,24 @@ async function getPatrolDangerReduction(originTownId: string, destinationTownId:
     columns: { townId: true, tradePolicy: true },
   });
 
+  // Mutual defense: also check partner towns' patrols
+  const partnerTownIds = new Set<string>();
+  for (const policy of policies) {
+    const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+    const partners: string[] = Array.isArray(tp.mutualDefensePartners) ? tp.mutualDefensePartners : [];
+    for (const pid of partners) partnerTownIds.add(pid);
+  }
+  // Remove towns we already have
+  partnerTownIds.delete(originTownId);
+  partnerTownIds.delete(destinationTownId);
+  if (partnerTownIds.size > 0) {
+    const partnerPolicies = await db.query.townPolicies.findMany({
+      where: inArray(townPolicies.townId, [...partnerTownIds]),
+      columns: { townId: true, tradePolicy: true },
+    });
+    policies.push(...partnerPolicies);
+  }
+
   const now = new Date();
   let totalReduction = 0;
 

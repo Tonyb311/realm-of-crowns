@@ -32,6 +32,8 @@ import {
   Pin,
   Eye,
   BookOpen,
+  Handshake,
+  Send,
 } from 'lucide-react';
 import api from '../services/api';
 import GoldAmount from '../components/shared/GoldAmount';
@@ -43,6 +45,7 @@ import { METRIC_LABELS, type TownMetricType } from '@shared/data/town-metrics-co
 import { PROJECT_TYPES, EMERGENCY_SPENDING_TYPES, SHERIFF_PATROL_CONFIG, PROJECT_CATEGORIES, UPGRADE_TYPES, DEGRADATION_THRESHOLD_DAYS, type ProjectType, type EmergencySpendingType, type UpgradeType } from '@shared/data/town-projects-config';
 import { TRADE_POLICY_CONFIG, TOWN_LAW_TYPES } from '@shared/data/trade-policy-config';
 import { PROCLAMATION_CONFIG } from '@shared/data/proclamation-config';
+import { TREATY_TYPES, MAX_ACTIVE_TREATIES, CANCEL_NOTICE_DAYS, RENEWAL_WINDOW_DAYS, MIN_TREATY_DURATION, MAX_TREATY_DURATION, DEFAULT_TREATY_DURATION, MIN_TARIFF_REDUCTION, MAX_TARIFF_REDUCTION, MIN_RESOURCE_SHARING_GOLD, MAX_RESOURCE_SHARING_GOLD, type TownTreatyType } from '@shared/data/treaty-config';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -244,6 +247,38 @@ interface TravelLogEntry {
   fromTown: string | null;
   toTown: string | null;
   occurredAt: string;
+}
+
+interface TownTreaty {
+  id: string;
+  treatyType: string;
+  typeName: string;
+  typeDescription: string;
+  partnerTown: { id: string; name: string };
+  proposedBy: { id: string; name: string } | null;
+  terms: Record<string, unknown>;
+  status: string;
+  duration: number;
+  townAVotesFor: number;
+  townAVotesAgainst: number;
+  townBVotesFor: number;
+  townBVotesAgainst: number;
+  ratificationEndsAt: string | null;
+  activatedAt: string | null;
+  expiresAt: string | null;
+  cancelNoticeUntil: string | null;
+  createdAt: string;
+  isIncoming: boolean;
+  renewalApprovedBy: string[];
+}
+
+interface TreatiesResponse {
+  active: TownTreaty[];
+  pending: TownTreaty[];
+  proposed: TownTreaty[];
+  past: TownTreaty[];
+  activeCount: number;
+  maxTreaties: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -571,6 +606,58 @@ export default function TownHallPage() {
       setBountyReward('');
       setBountyDays('3');
     },
+  });
+
+  // -------------------------------------------------------------------------
+  // Treaties
+  // -------------------------------------------------------------------------
+  const { data: treatiesData } = useQuery<TreatiesResponse>({
+    queryKey: ['treaties', townId],
+    queryFn: async () => (await api.get(`/treaties/town/${townId}`)).data,
+    enabled: !!townId,
+  });
+
+  const { data: allTownsData } = useQuery<{ towns: { id: string; name: string }[] }>({
+    queryKey: ['world', 'towns-list'],
+    queryFn: async () => (await api.get('/world/towns')).data,
+    enabled: !!townId,
+  });
+
+  const [showTreatyForm, setShowTreatyForm] = useState(false);
+  const [treatyPartnerTownId, setTreatyPartnerTownId] = useState('');
+  const [treatyType, setTreatyType] = useState<TownTreatyType>('TRADE_AGREEMENT');
+  const [treatyDuration, setTreatyDuration] = useState(DEFAULT_TREATY_DURATION);
+  const [treatyTariffReduction, setTreatyTariffReduction] = useState(50);
+  const [treatyGoldPerDay, setTreatyGoldPerDay] = useState('50');
+  const [treatyDirection, setTreatyDirection] = useState<'A_TO_B' | 'B_TO_A'>('A_TO_B');
+
+  const proposeTreatyMutation = useMutation({
+    mutationFn: async (data: Record<string, unknown>) => (await api.post('/treaties/propose', data)).data,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['treaties'] });
+      setShowTreatyForm(false);
+      setTreatyPartnerTownId('');
+    },
+  });
+
+  const respondTreatyMutation = useMutation({
+    mutationFn: async (data: { treatyId: string; response: 'ACCEPT' | 'REJECT' }) => (await api.post('/treaties/respond', data)).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['treaties'] }),
+  });
+
+  const voteTreatyMutation = useMutation({
+    mutationFn: async (data: { treatyId: string; vote: boolean }) => (await api.post('/treaties/vote', data)).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['treaties'] }),
+  });
+
+  const cancelTreatyMutation = useMutation({
+    mutationFn: async (data: { treatyId: string }) => (await api.post('/treaties/cancel', data)).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['treaties'] }),
+  });
+
+  const renewTreatyMutation = useMutation({
+    mutationFn: async (data: { treatyId: string }) => (await api.post('/treaties/renew', data)).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['treaties'] }),
   });
 
   // Trade policy form state
@@ -1928,6 +2015,306 @@ export default function TownHallPage() {
                 );
               })()}
             </section>
+          </div>
+        )}
+
+        {/* ================================================================ */}
+        {/* Diplomatic Treaties — visible to all                            */}
+        {/* ================================================================ */}
+        {town && townId && (
+          <div className="mt-10 border-t border-realm-border pt-8 space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-display text-realm-text-primary flex items-center gap-2">
+                <Handshake className="w-5 h-5 text-realm-teal-300" />
+                Diplomatic Treaties
+              </h2>
+              <span className="text-xs text-realm-text-muted">
+                {treatiesData?.activeCount ?? 0}/{treatiesData?.maxTreaties ?? MAX_ACTIVE_TREATIES} active
+              </span>
+            </div>
+
+            {/* Active treaties */}
+            {(treatiesData?.active ?? []).length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-display text-realm-text-secondary">Active Treaties</h3>
+                {treatiesData!.active.map(t => {
+                  const daysLeft = t.expiresAt ? Math.max(0, Math.ceil((new Date(t.expiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000))) : 0;
+                  const inRenewalWindow = daysLeft <= RENEWAL_WINDOW_DAYS;
+                  const alreadyApprovedRenewal = t.renewalApprovedBy.includes(character?.id ?? '');
+                  return (
+                    <div key={t.id} className={`bg-realm-bg-700 border rounded-lg p-3 ${t.status === 'CANCELLING' ? 'border-realm-warning/40' : 'border-realm-teal-300/30'}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="text-sm font-display text-realm-text-primary">{t.typeName}</span>
+                          <span className="text-xs text-realm-text-muted ml-2">with {t.partnerTown.name}</span>
+                          {t.status === 'CANCELLING' && (
+                            <span className="ml-2 text-xs text-realm-warning">(Cancelling — {t.cancelNoticeUntil ? Math.max(0, Math.ceil((new Date(t.cancelNoticeUntil).getTime() - Date.now()) / (24 * 60 * 60 * 1000))) : 0}d notice remaining)</span>
+                          )}
+                        </div>
+                        <span className="text-xs text-realm-text-muted whitespace-nowrap">{daysLeft}d left</span>
+                      </div>
+                      {t.terms.tariffReduction != null && (
+                        <p className="text-[11px] text-realm-text-muted mt-1">Tariff reduction: {Math.round(Number(t.terms.tariffReduction) * 100)}%</p>
+                      )}
+                      {t.terms.goldPerDay != null && (
+                        <p className="text-[11px] text-realm-text-muted mt-1">Gold transfer: {String(t.terms.goldPerDay)}g/day ({String(t.terms.direction) === 'A_TO_B' ? '→' : '←'})</p>
+                      )}
+                      {isMayor && t.status === 'ACTIVE' && (
+                        <div className="flex gap-2 mt-2">
+                          {inRenewalWindow && !alreadyApprovedRenewal && (
+                            <button
+                              onClick={() => renewTreatyMutation.mutate({ treatyId: t.id })}
+                              disabled={renewTreatyMutation.isPending}
+                              className="px-2 py-1 text-[11px] bg-realm-teal-300/10 border border-realm-teal-300/30 text-realm-teal-300 rounded-sm hover:bg-realm-teal-300/20 disabled:opacity-40"
+                            >
+                              Renew
+                            </button>
+                          )}
+                          {alreadyApprovedRenewal && <span className="text-[11px] text-realm-teal-300">Renewal approved — awaiting partner</span>}
+                          <button
+                            onClick={() => cancelTreatyMutation.mutate({ treatyId: t.id })}
+                            disabled={cancelTreatyMutation.isPending}
+                            className="px-2 py-1 text-[11px] bg-realm-danger/10 border border-realm-danger/30 text-realm-danger rounded-sm hover:bg-realm-danger/20 disabled:opacity-40"
+                          >
+                            Cancel ({CANCEL_NOTICE_DAYS}d notice)
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Pending ratification */}
+            {(treatiesData?.pending ?? []).length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-display text-realm-text-secondary">Pending Ratification</h3>
+                {treatiesData!.pending.map(t => (
+                  <div key={t.id} className="bg-realm-bg-700 border border-realm-purple-500/30 rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="text-sm font-display text-realm-text-primary">{t.typeName}</span>
+                        <span className="text-xs text-realm-text-muted ml-2">with {t.partnerTown.name}</span>
+                      </div>
+                      {t.ratificationEndsAt && (
+                        <span className="text-xs text-realm-text-muted">
+                          {Math.max(0, Math.ceil((new Date(t.ratificationEndsAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))}d left to vote
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-4 mt-2 text-[11px] text-realm-text-muted">
+                      <span>Town A: {t.townAVotesFor} for / {t.townAVotesAgainst} against</span>
+                      <span>Town B: {t.townBVotesFor} for / {t.townBVotesAgainst} against</span>
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={() => voteTreatyMutation.mutate({ treatyId: t.id, vote: true })}
+                        disabled={voteTreatyMutation.isPending}
+                        className="px-2 py-1 text-[11px] bg-realm-success/10 border border-realm-success/30 text-realm-success rounded-sm hover:bg-realm-success/20 disabled:opacity-40"
+                      >
+                        <Check className="w-3 h-3 inline mr-0.5" /> Vote Yes
+                      </button>
+                      <button
+                        onClick={() => voteTreatyMutation.mutate({ treatyId: t.id, vote: false })}
+                        disabled={voteTreatyMutation.isPending}
+                        className="px-2 py-1 text-[11px] bg-realm-danger/10 border border-realm-danger/30 text-realm-danger rounded-sm hover:bg-realm-danger/20 disabled:opacity-40"
+                      >
+                        <X className="w-3 h-3 inline mr-0.5" /> Vote No
+                      </button>
+                      {isMayor && (
+                        <button
+                          onClick={() => cancelTreatyMutation.mutate({ treatyId: t.id })}
+                          disabled={cancelTreatyMutation.isPending}
+                          className="px-2 py-1 text-[11px] bg-realm-text-muted/10 border border-realm-text-muted/30 text-realm-text-muted rounded-sm hover:bg-realm-text-muted/20 disabled:opacity-40 ml-auto"
+                        >
+                          Withdraw
+                        </button>
+                      )}
+                    </div>
+                    {voteTreatyMutation.isError && (
+                      <p className="text-xs text-realm-danger mt-1">{(voteTreatyMutation.error as any)?.response?.data?.error ?? 'Vote failed'}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Incoming proposals */}
+            {(treatiesData?.proposed ?? []).filter(t => t.isIncoming).length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-display text-realm-text-secondary">Incoming Proposals</h3>
+                {treatiesData!.proposed.filter(t => t.isIncoming).map(t => (
+                  <div key={t.id} className="bg-realm-bg-700 border border-realm-gold-500/30 rounded-lg p-3">
+                    <div>
+                      <span className="text-sm font-display text-realm-text-primary">{t.typeName}</span>
+                      <span className="text-xs text-realm-text-muted ml-2">from {t.partnerTown.name}</span>
+                    </div>
+                    <p className="text-[11px] text-realm-text-muted mt-1">{t.typeDescription}</p>
+                    {t.terms.tariffReduction != null && (
+                      <p className="text-[11px] text-realm-text-muted">Proposed tariff reduction: {Math.round(Number(t.terms.tariffReduction) * 100)}%</p>
+                    )}
+                    {t.terms.goldPerDay != null && (
+                      <p className="text-[11px] text-realm-text-muted">Gold transfer: {String(t.terms.goldPerDay)}g/day</p>
+                    )}
+                    {isMayor && (
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => respondTreatyMutation.mutate({ treatyId: t.id, response: 'ACCEPT' })}
+                          disabled={respondTreatyMutation.isPending}
+                          className="px-2 py-1 text-[11px] bg-realm-success/10 border border-realm-success/30 text-realm-success rounded-sm hover:bg-realm-success/20 disabled:opacity-40"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          onClick={() => respondTreatyMutation.mutate({ treatyId: t.id, response: 'REJECT' })}
+                          disabled={respondTreatyMutation.isPending}
+                          className="px-2 py-1 text-[11px] bg-realm-danger/10 border border-realm-danger/30 text-realm-danger rounded-sm hover:bg-realm-danger/20 disabled:opacity-40"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                    {respondTreatyMutation.isError && (
+                      <p className="text-xs text-realm-danger mt-1">{(respondTreatyMutation.error as any)?.response?.data?.error ?? 'Response failed'}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Outgoing proposals */}
+            {(treatiesData?.proposed ?? []).filter(t => !t.isIncoming).length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-display text-realm-text-secondary">Outgoing Proposals</h3>
+                {treatiesData!.proposed.filter(t => !t.isIncoming).map(t => (
+                  <div key={t.id} className="bg-realm-bg-700 border border-realm-bg-600 rounded-lg p-3">
+                    <span className="text-sm font-display text-realm-text-primary">{t.typeName}</span>
+                    <span className="text-xs text-realm-text-muted ml-2">to {t.partnerTown.name}</span>
+                    <span className="text-xs text-realm-text-muted ml-2">— awaiting response</span>
+                    {isMayor && (
+                      <button
+                        onClick={() => cancelTreatyMutation.mutate({ treatyId: t.id })}
+                        disabled={cancelTreatyMutation.isPending}
+                        className="ml-2 px-2 py-0.5 text-[11px] bg-realm-text-muted/10 border border-realm-text-muted/30 text-realm-text-muted rounded-sm hover:bg-realm-text-muted/20 disabled:opacity-40"
+                      >
+                        Withdraw
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Mayor: Propose Treaty */}
+            {isMayor && (
+              <div>
+                {!showTreatyForm ? (
+                  <button
+                    onClick={() => setShowTreatyForm(true)}
+                    disabled={(treatiesData?.activeCount ?? 0) >= MAX_ACTIVE_TREATIES}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs bg-realm-teal-300/10 border border-realm-teal-300/30 text-realm-teal-300 font-display rounded-sm hover:bg-realm-teal-300/20 transition-colors disabled:opacity-40"
+                  >
+                    <Send className="w-3.5 h-3.5" /> Propose Treaty
+                  </button>
+                ) : (
+                  <div className="bg-realm-bg-700 border border-realm-teal-300/30 rounded-lg p-4 space-y-3">
+                    <h3 className="text-sm font-display text-realm-teal-300">Propose a Treaty</h3>
+
+                    {/* Partner town selector */}
+                    <div>
+                      <label className="block text-[11px] text-realm-text-muted mb-1">Partner Town</label>
+                      <select
+                        value={treatyPartnerTownId}
+                        onChange={e => setTreatyPartnerTownId(e.target.value)}
+                        className="w-full bg-realm-bg-800 border border-realm-border rounded px-2 py-1.5 text-xs text-realm-text-primary"
+                      >
+                        <option value="">Select a town...</option>
+                        {(allTownsData?.towns ?? []).filter(t => t.id !== townId).map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Treaty type */}
+                    <div>
+                      <label className="block text-[11px] text-realm-text-muted mb-1">Treaty Type</label>
+                      <div className="space-y-1">
+                        {(Object.entries(TREATY_TYPES) as [TownTreatyType, typeof TREATY_TYPES[TownTreatyType]][]).map(([key, cfg]) => (
+                          <label key={key} className={`flex items-start gap-2 p-2 rounded cursor-pointer border ${treatyType === key ? 'border-realm-teal-300/40 bg-realm-teal-300/5' : 'border-transparent'}`}>
+                            <input type="radio" name="treatyType" checked={treatyType === key} onChange={() => setTreatyType(key)} className="mt-0.5 accent-realm-teal-300" />
+                            <div>
+                              <span className="text-xs text-realm-text-primary">{cfg.name}</span>
+                              <p className="text-[11px] text-realm-text-muted">{cfg.description}</p>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Type-specific terms */}
+                    {treatyType === 'TRADE_AGREEMENT' && (
+                      <div>
+                        <label className="block text-[11px] text-realm-text-muted mb-1">Tariff Reduction: {treatyTariffReduction}%</label>
+                        <input type="range" min={MIN_TARIFF_REDUCTION * 100} max={MAX_TARIFF_REDUCTION * 100} step={5} value={treatyTariffReduction} onChange={e => setTreatyTariffReduction(Number(e.target.value))} className="w-full accent-realm-teal-300" />
+                      </div>
+                    )}
+                    {treatyType === 'RESOURCE_SHARING' && (
+                      <div className="space-y-2">
+                        <div>
+                          <label className="block text-[11px] text-realm-text-muted mb-1">Gold per Day</label>
+                          <input type="number" min={MIN_RESOURCE_SHARING_GOLD} max={MAX_RESOURCE_SHARING_GOLD} value={treatyGoldPerDay} onChange={e => setTreatyGoldPerDay(e.target.value)} className="w-full bg-realm-bg-800 border border-realm-border rounded px-2 py-1.5 text-xs text-realm-text-primary" />
+                        </div>
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => setTreatyDirection('A_TO_B')} className={`flex-1 px-2 py-1 text-[11px] rounded border ${treatyDirection === 'A_TO_B' ? 'border-realm-teal-300/40 bg-realm-teal-300/10 text-realm-teal-300' : 'border-realm-border text-realm-text-muted'}`}>
+                            We send →
+                          </button>
+                          <button type="button" onClick={() => setTreatyDirection('B_TO_A')} className={`flex-1 px-2 py-1 text-[11px] rounded border ${treatyDirection === 'B_TO_A' ? 'border-realm-teal-300/40 bg-realm-teal-300/10 text-realm-teal-300' : 'border-realm-border text-realm-text-muted'}`}>
+                            ← We receive
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Duration */}
+                    <div>
+                      <label className="block text-[11px] text-realm-text-muted mb-1">Duration: {treatyDuration} days</label>
+                      <input type="range" min={MIN_TREATY_DURATION} max={MAX_TREATY_DURATION} step={5} value={treatyDuration} onChange={e => setTreatyDuration(Number(e.target.value))} className="w-full accent-realm-teal-300" />
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          const terms: Record<string, unknown> = {};
+                          if (treatyType === 'TRADE_AGREEMENT') terms.tariffReduction = treatyTariffReduction / 100;
+                          if (treatyType === 'RESOURCE_SHARING') { terms.goldPerDay = parseInt(treatyGoldPerDay) || 50; terms.direction = treatyDirection; }
+                          proposeTreatyMutation.mutate({ townAId: townId, townBId: treatyPartnerTownId, treatyType, terms, duration: treatyDuration });
+                        }}
+                        disabled={proposeTreatyMutation.isPending || !treatyPartnerTownId}
+                        className="px-3 py-1.5 text-xs bg-realm-teal-300/10 border border-realm-teal-300/30 text-realm-teal-300 font-display rounded-sm hover:bg-realm-teal-300/20 transition-colors disabled:opacity-40"
+                      >
+                        {proposeTreatyMutation.isPending ? 'Proposing...' : 'Propose'}
+                      </button>
+                      <button onClick={() => setShowTreatyForm(false)} className="px-3 py-1.5 text-xs text-realm-text-muted border border-realm-border rounded-sm hover:bg-realm-bg-600">
+                        Cancel
+                      </button>
+                    </div>
+                    {proposeTreatyMutation.isError && (
+                      <p className="text-xs text-realm-danger">{(proposeTreatyMutation.error as any)?.response?.data?.error ?? 'Proposal failed'}</p>
+                    )}
+                    {cancelTreatyMutation.isError && (
+                      <p className="text-xs text-realm-danger">{(cancelTreatyMutation.error as any)?.response?.data?.error ?? 'Action failed'}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* No treaties */}
+            {!treatiesData?.active?.length && !treatiesData?.pending?.length && !treatiesData?.proposed?.length && (
+              <p className="text-xs text-realm-text-muted">No active or pending treaties.</p>
+            )}
           </div>
         )}
 

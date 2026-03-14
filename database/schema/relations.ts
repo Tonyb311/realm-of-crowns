@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { characters, characterActiveEffects, characterEquipment, items, inventories, professionXp, towns, townResources, regions, regionBorders, diplomacyEvents, kingdoms, buildings, buildingConstructions, itemTemplates, priceHistories, caravans, elections, electionVotes, guilds, guildMembers, questProgress, quests, combatSessions, combatLogs, combatParticipants, notifications, racialAbilityCooldowns, changelingDisguises, achievements, playerAchievements, forgebornMaintenance, playerProfessions, craftingActions, recipes, travelRoutes, auctionCycles, marketListings, friends, laws, messages, electionCandidates, impeachments, impeachmentVotes, townTreasuries, councilMembers, townPolicies, abilities, characterAbilities, npcs, characterAppearances, users, exclusiveZones, gatheringActions, resources, wars, treaties, petitions, petitionSignatures, dailyActions, serviceActions, loans, serviceReputations, lawVotes, dailyReports, travelGroups, parties, travelNodes, travelGroupMembers, characterTravelStates, combatEncounterLogs, simulationRuns, groupTravelStates, partyMembers, partyInvitations, marketBuyOrders, tradeTransactions, ownedAssets, livestock, houses, houseStorage, jobs, monsters, droppedItems, deletionLogs, innMenu, noticeBoardPosts, gods, churchChapters, townMetrics, blackMarketListings, racialReputations, disputes, referendums, referendumVotes, townHistoryLog, townProjects, townUpgrades, itemPriceCeilings, townProclamations, travelLogs } from "./tables";
+import { characters, characterActiveEffects, characterEquipment, items, inventories, professionXp, towns, townResources, regions, regionBorders, diplomacyEvents, kingdoms, buildings, buildingConstructions, itemTemplates, priceHistories, caravans, elections, electionVotes, guilds, guildMembers, questProgress, quests, combatSessions, combatLogs, combatParticipants, notifications, racialAbilityCooldowns, changelingDisguises, achievements, playerAchievements, forgebornMaintenance, playerProfessions, craftingActions, recipes, travelRoutes, auctionCycles, marketListings, friends, laws, messages, electionCandidates, impeachments, impeachmentVotes, townTreasuries, councilMembers, townPolicies, abilities, characterAbilities, npcs, characterAppearances, users, exclusiveZones, gatheringActions, resources, wars, treaties, petitions, petitionSignatures, dailyActions, serviceActions, loans, serviceReputations, lawVotes, dailyReports, travelGroups, parties, travelNodes, travelGroupMembers, characterTravelStates, combatEncounterLogs, simulationRuns, groupTravelStates, partyMembers, partyInvitations, marketBuyOrders, tradeTransactions, ownedAssets, livestock, houses, houseStorage, jobs, monsters, droppedItems, deletionLogs, innMenu, noticeBoardPosts, gods, churchChapters, townMetrics, blackMarketListings, racialReputations, disputes, referendums, referendumVotes, townHistoryLog, townProjects, townUpgrades, itemPriceCeilings, townProclamations, travelLogs, townTreaties, townTreatyVotes } from "./tables";
 
 export const characterEquipmentRelations = relations(characterEquipment, ({one}) => ({
 	character: one(characters, {
@@ -1392,6 +1392,35 @@ export const travelLogsRelations = relations(travelLogs, ({one}) => ({
 	}),
 	character: one(characters, {
 		fields: [travelLogs.characterId],
+		references: [characters.id],
+	}),
+}));
+
+export const townTreatiesRelations = relations(townTreaties, ({one, many}) => ({
+	townA: one(towns, {
+		fields: [townTreaties.townAId],
+		references: [towns.id],
+		relationName: "townTreaties_townAId_towns_id",
+	}),
+	townB: one(towns, {
+		fields: [townTreaties.townBId],
+		references: [towns.id],
+		relationName: "townTreaties_townBId_towns_id",
+	}),
+	proposedBy: one(characters, {
+		fields: [townTreaties.proposedById],
+		references: [characters.id],
+	}),
+	votes: many(townTreatyVotes),
+}));
+
+export const townTreatyVotesRelations = relations(townTreatyVotes, ({one}) => ({
+	treaty: one(townTreaties, {
+		fields: [townTreatyVotes.treatyId],
+		references: [townTreaties.id],
+	}),
+	character: one(characters, {
+		fields: [townTreatyVotes.characterId],
 		references: [characters.id],
 	}),
 }));

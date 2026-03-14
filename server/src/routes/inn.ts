@@ -442,33 +442,39 @@ router.post('/:buildingId/menu/buy', authGuard, characterGuard, validate(buySche
     let innVarethSurcharge = 0;
     let innSecularSurcharge = 0;
     if (character.homeTownId !== building.townId) {
-      // Vareth religious surcharge
-      const dominantChapter = await db.query.churchChapters.findFirst({
-        where: and(eq(churchChapters.townId, building.townId), eq(churchChapters.isDominant, true)),
-      });
-      if (dominantChapter?.godId === 'vareth') {
-        let surchargeRate = 0.10;
-        if (dominantChapter.isShrine) {
-          const policy = await db.query.townPolicies.findFirst({
-            where: eq(townPolicies.townId, building.townId),
-            columns: { tradePolicy: true },
-          });
-          const tp = policy?.tradePolicy as Record<string, unknown> | null;
-          const tariffRate = typeof tp?.varethTariffRate === 'number' ? tp.varethTariffRate : 0.10;
-          surchargeRate = Math.max(0.10, Math.min(0.25, tariffRate));
-        }
-        innVarethSurcharge = Math.floor(basePrice * surchargeRate);
-      }
-
-      // Secular tariff (mayor-set, independent of Vareth)
-      const secPolicy = await db.query.townPolicies.findFirst({
+      // Check treaty-based exemptions
+      const treatyPolicy = await db.query.townPolicies.findFirst({
         where: eq(townPolicies.townId, building.townId),
         columns: { tradePolicy: true },
       });
-      const secTp = (secPolicy?.tradePolicy as Record<string, any>) ?? {};
-      const secularRate = typeof secTp.secularTariffRate === 'number' ? secTp.secularTariffRate : 0;
-      if (secularRate > 0) {
-        innSecularSurcharge = Math.floor(basePrice * secularRate);
+      const treatyTp = (treatyPolicy?.tradePolicy as Record<string, any>) ?? {};
+      const sharedMarketPartners: string[] = Array.isArray(treatyTp.sharedMarketPartners) ? treatyTp.sharedMarketPartners : [];
+      const isSharedMarket = character.homeTownId && sharedMarketPartners.includes(character.homeTownId);
+
+      if (!isSharedMarket) {
+        const tradeAgreements: { partnerTownId: string; tariffReduction: number }[] = Array.isArray(treatyTp.tradeAgreements) ? treatyTp.tradeAgreements : [];
+        const agreement = character.homeTownId ? tradeAgreements.find(a => a.partnerTownId === character.homeTownId) : undefined;
+        const tariffReductionMult = agreement ? (1 - (agreement.tariffReduction ?? 0)) : 1;
+
+        // Vareth religious surcharge
+        const dominantChapter = await db.query.churchChapters.findFirst({
+          where: and(eq(churchChapters.townId, building.townId), eq(churchChapters.isDominant, true)),
+        });
+        if (dominantChapter?.godId === 'vareth') {
+          let surchargeRate = 0.10;
+          if (dominantChapter.isShrine) {
+            const tariffRate = typeof treatyTp?.varethTariffRate === 'number' ? treatyTp.varethTariffRate : 0.10;
+            surchargeRate = Math.max(0.10, Math.min(0.25, tariffRate));
+          }
+          surchargeRate *= tariffReductionMult;
+          innVarethSurcharge = Math.floor(basePrice * surchargeRate);
+        }
+
+        // Secular tariff (mayor-set, independent of Vareth)
+        const secularRate = typeof treatyTp.secularTariffRate === 'number' ? treatyTp.secularTariffRate : 0;
+        if (secularRate > 0) {
+          innSecularSurcharge = Math.floor(basePrice * secularRate * tariffReductionMult);
+        }
       }
     }
     const innSurcharge = innVarethSurcharge + innSecularSurcharge;

@@ -1439,6 +1439,52 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   });
 
   // -----------------------------------------------------------------------
+  // Step 6.7: Treaty Resource Sharing — Daily Gold Transfers
+  // -----------------------------------------------------------------------
+  await runStep('Treaty Resource Sharing', 6.7, async () => {
+    const allPolicies = await db.query.townPolicies.findMany({
+      columns: { townId: true, tradePolicy: true },
+    });
+
+    let transfers = 0;
+    for (const policy of allPolicies) {
+      const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+      const resourceSharing: { partnerTownId: string; goldPerDay: number; direction: string }[] = Array.isArray(tp.resourceSharing) ? tp.resourceSharing : [];
+
+      for (const entry of resourceSharing) {
+        if (entry.direction !== 'SEND' || !entry.goldPerDay || entry.goldPerDay <= 0) continue;
+
+        // Check sender treasury balance
+        const senderTreasury = await db.query.townTreasuries.findFirst({
+          where: eq(townTreasuries.townId, policy.townId),
+          columns: { balance: true },
+        });
+        if (!senderTreasury || senderTreasury.balance < entry.goldPerDay) {
+          // Log failure as town event
+          logTownEvent(
+            policy.townId, 'GOVERNANCE', 'Resource Sharing Transfer Failed',
+            `Insufficient treasury (${senderTreasury?.balance ?? 0}g) to send ${entry.goldPerDay}g to partner town`,
+          ).catch(() => {});
+          continue;
+        }
+
+        // Transfer: deduct from sender, add to receiver
+        await db.update(townTreasuries)
+          .set({ balance: sql`${townTreasuries.balance} - ${entry.goldPerDay}` })
+          .where(eq(townTreasuries.townId, policy.townId));
+        await db.update(townTreasuries)
+          .set({ balance: sql`${townTreasuries.balance} + ${entry.goldPerDay}` })
+          .where(eq(townTreasuries.townId, entry.partnerTownId));
+        transfers++;
+      }
+    }
+
+    if (transfers > 0) {
+      console.log(`[DailyTick]   Resource sharing: ${transfers} gold transfer(s)`);
+    }
+  });
+
+  // -----------------------------------------------------------------------
   // Step 7: Economy Cycle
   // -----------------------------------------------------------------------
   await runStep('Economy Cycle', 7, async () => {
@@ -2082,12 +2128,17 @@ export async function processDailyTick(): Promise<DailyTickResult> {
       columns: { townId: true, tradePolicy: true },
     });
     const summitTowns = new Set<string>();
+    const culturalExchangeMap = new Map<string, string[]>(); // townId → partner townIds
     const now = Date.now();
     for (const p of allPolicies) {
       const tp = (p.tradePolicy as Record<string, unknown>) ?? {};
       const summitUntil = tp.valtherisSummitUntil as string | undefined;
       if (summitUntil && new Date(summitUntil).getTime() > now) {
         summitTowns.add(p.townId);
+      }
+      const partners = tp.culturalExchangePartners;
+      if (Array.isArray(partners) && partners.length > 0) {
+        culturalExchangeMap.set(p.townId, partners as string[]);
       }
     }
 
@@ -2099,6 +2150,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
 
       const isSummitActive = summitTowns.has(townId);
       const gainAmount = isSummitActive ? REPUTATION_GAINS.DIPLOMATIC_SUMMIT : REPUTATION_GAINS.PROXIMITY_TICK;
+      const townCulturalPartners = culturalExchangeMap.get(townId) ?? [];
 
       for (const char of chars) {
         if (!char.race) continue;
@@ -2106,10 +2158,14 @@ export async function processDailyTick(): Promise<DailyTickResult> {
           char.patronGodId, char.homeTownId, char.currentTownId!, allChaptersForRep,
         );
 
+        // Cultural exchange bonus: if character's homeTown has cultural exchange with this town
+        const hasCulturalExchange = char.homeTownId && char.homeTownId !== townId && townCulturalPartners.includes(char.homeTownId);
+        const effectiveGain = hasCulturalExchange ? gainAmount * 1.25 : gainAmount;
+
         for (const otherRace of racesInTown) {
           if (otherRace === char.race) continue;
           try {
-            await addRacialReputationWithBonus(char.id, otherRace, gainAmount, repBonus);
+            await addRacialReputationWithBonus(char.id, otherRace, effectiveGain, repBonus);
             repUpdates++;
           } catch (err) {
             console.error(`[DailyTick] Rep update error for ${char.id}/${otherRace}:`, err);

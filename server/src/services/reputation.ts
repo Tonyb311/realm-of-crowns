@@ -26,11 +26,11 @@ export async function addRacialReputation(
   const reputationBonus = await getReputationGainBonus(characterId, townId);
   let finalAmount = baseAmount * (1 + reputationBonus);
 
-  // Check for active blood memory modifier in this town
+  // Check for active blood memory modifier + cultural exchange in this town
   try {
     const char = await db.query.characters.findFirst({
       where: eq(characters.id, characterId),
-      columns: { race: true },
+      columns: { race: true, homeTownId: true },
     });
     if (char) {
       const policy = await db.query.townPolicies.findFirst({
@@ -46,9 +46,17 @@ export async function addRacialReputation(
           finalAmount *= bloodMemoryModifier === 'positive' ? 1.5 : 0.5;
         }
       }
+
+      // Cultural exchange treaty bonus (+25%)
+      if (char.homeTownId && char.homeTownId !== townId) {
+        const culturalPartners: string[] = Array.isArray(tp?.culturalExchangePartners) ? tp.culturalExchangePartners : [];
+        if (culturalPartners.includes(char.homeTownId)) {
+          finalAmount *= 1.25;
+        }
+      }
     }
   } catch {
-    // Fire-and-forget — blood memory check failure should not block reputation changes
+    // Fire-and-forget — blood memory/cultural exchange check failure should not block reputation changes
   }
 
   await db.insert(racialReputations)
