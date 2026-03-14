@@ -139,10 +139,17 @@ export async function resolveAuctionCycle(townId: string): Promise<{
 
       // Extract surcharge amounts from rollBreakdown before it gets overwritten
       const surchargeMap = new Map<string, number>();
+      const varethSurchargeMap = new Map<string, number>();
+      const secularSurchargeMap = new Map<string, number>();
       for (const order of pendingOrders) {
         const rb = order.rollBreakdown as Record<string, unknown> | null;
         if (rb && typeof rb.surcharge === 'number' && rb.surcharge > 0) {
           surchargeMap.set(order.id, rb.surcharge);
+          // New format: split surcharges. Old format: entire surcharge is Vareth.
+          const vs = typeof rb.varethSurcharge === 'number' ? rb.varethSurcharge : rb.surcharge;
+          const ss = typeof rb.secularSurcharge === 'number' ? rb.secularSurcharge : 0;
+          varethSurchargeMap.set(order.id, vs);
+          secularSurchargeMap.set(order.id, ss);
         }
       }
 
@@ -371,16 +378,23 @@ export async function resolveAuctionCycle(townId: string): Promise<{
           })
           .where(eq(characters.id, listing.sellerId));
 
-        // Credit Vareth church treasury with surcharge
-        if (winnerSurcharge > 0) {
+        // Credit Vareth church treasury with Vareth surcharge, town treasury with secular surcharge
+        const winnerVarethSurcharge = varethSurchargeMap.get(winner.order.id) ?? 0;
+        const winnerSecularSurcharge = secularSurchargeMap.get(winner.order.id) ?? 0;
+        if (winnerVarethSurcharge > 0) {
           const varethChapter = await tx.query.churchChapters.findFirst({
             where: and(eq(churchChapters.townId, townId), eq(churchChapters.godId, 'vareth'), eq(churchChapters.isDominant, true)),
           });
           if (varethChapter) {
             await tx.update(churchChapters)
-              .set({ treasury: sql`${churchChapters.treasury} + ${winnerSurcharge}` })
+              .set({ treasury: sql`${churchChapters.treasury} + ${winnerVarethSurcharge}` })
               .where(eq(churchChapters.id, varethChapter.id));
           }
+        }
+        if (winnerSecularSurcharge > 0) {
+          await tx.update(townTreasuries)
+            .set({ balance: sql`${townTreasuries.balance} + ${winnerSecularSurcharge}` })
+            .where(eq(townTreasuries.townId, townId));
         }
 
         // Tessivane market bonus — seller gets extra gold, buyer gets rebate

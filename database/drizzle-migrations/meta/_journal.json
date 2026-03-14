@@ -183,6 +183,13 @@
       "when": 1775174400000,
       "tag": "0025_town_upgrades",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1775260800000,
+      "tag": "0026_trade_policies_town_laws",
+      "breakpoints": true
     }
   ]
 }

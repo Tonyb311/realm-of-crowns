@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CircleDollarSign, X } from 'lucide-react';
+import { CircleDollarSign, X, AlertTriangle } from 'lucide-react';
 import { RealmButton } from '../ui/RealmButton';
 import GoldAmount from '../shared/GoldAmount';
 import NetProceedsPreview from './NetProceedsPreview';
@@ -51,6 +51,29 @@ export default function SellForm({ onClose, onSuccess }: SellFormProps) {
     queryFn: async () =>
       (await api.get('/market/list-preview', { params: { askingPrice: 100 } })).data,
   });
+
+  // Fetch character for town context
+  const { data: character } = useQuery<{ currentTownId: string | null }>({
+    queryKey: ['character', 'me'],
+    queryFn: async () => (await api.get('/characters/me')).data,
+  });
+
+  // Fetch town trade policy + price ceilings for warnings
+  const { data: townInfo } = useQuery<{ town: { tradePolicy: Record<string, unknown> } }>({
+    queryKey: ['governance', 'town-info', character?.currentTownId],
+    queryFn: async () => (await api.get(`/governance/town-info/${character!.currentTownId}`)).data,
+    enabled: !!character?.currentTownId,
+  });
+
+  const { data: ceilingsData } = useQuery<{ ceilings: { itemTemplateId: string; itemName: string; maxPrice: number }[] }>({
+    queryKey: ['governance', 'price-ceilings', character?.currentTownId],
+    queryFn: async () => (await api.get(`/governance/price-ceilings/${character!.currentTownId}`)).data,
+    enabled: !!character?.currentTownId,
+  });
+
+  const marketMinPrice = Number(townInfo?.town?.tradePolicy?.minListingPrice ?? 0);
+  const marketMaxQty = Number(townInfo?.town?.tradePolicy?.maxListingQuantity ?? 0);
+  const hasCeilings = (ceilingsData?.ceilings?.length ?? 0) > 0;
 
   const feeRate = feePreview?.feeRate ?? 0.1;
   const isMerchant = feePreview?.isMerchant ?? false;
@@ -137,6 +160,32 @@ export default function SellForm({ onClose, onSuccess }: SellFormProps) {
               className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-hidden"
             />
           </div>
+
+          {/* Market rules / price ceiling warnings */}
+          {(marketMinPrice > 0 || marketMaxQty > 0 || hasCeilings) && (
+            <div className="bg-realm-bg-900/50 border border-realm-border/50 rounded-sm p-2.5 space-y-1">
+              <p className="text-[10px] text-realm-text-muted flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3 text-amber-400" />
+                Town market rules:
+              </p>
+              {marketMinPrice > 0 && (
+                <p className="text-[10px] text-realm-text-muted pl-4">
+                  Min listing price: <span className="text-realm-gold-400">{marketMinPrice}g</span>
+                </p>
+              )}
+              {marketMaxQty > 0 && (
+                <p className="text-[10px] text-realm-text-muted pl-4">
+                  Max listing quantity: <span className="text-realm-gold-400">{marketMaxQty}</span>
+                </p>
+              )}
+              {hasCeilings && (
+                <p className="text-[10px] text-realm-text-muted pl-4">
+                  Price ceilings on {ceilingsData!.ceilings.length} item{ceilingsData!.ceilings.length > 1 ? 's' : ''}{' '}
+                  (server enforced)
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Net proceeds preview */}
           {listPriceNum > 0 && listQtyNum > 0 && (

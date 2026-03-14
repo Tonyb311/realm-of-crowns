@@ -1259,7 +1259,8 @@ export const elections = pgTable("elections", {
 
 export const laws = pgTable("laws", {
 	id: text().primaryKey().notNull(),
-	kingdomId: text("kingdom_id").notNull(),
+	kingdomId: text("kingdom_id"),
+	townId: text("town_id"),
 	title: text().notNull(),
 	description: text(),
 	effects: jsonb().default({}).notNull(),
@@ -1275,6 +1276,7 @@ export const laws = pgTable("laws", {
 	votesFor: integer("votes_for").default(0).notNull(),
 }, (table) => [
 	index("laws_kingdom_id_idx").using("btree", table.kingdomId.asc().nullsLast().op("text_ops")),
+	index("laws_town_id_idx").using("btree", table.townId.asc().nullsLast().op("text_ops")),
 	index("laws_status_idx").using("btree", table.status.asc().nullsLast().op("enum_ops")),
 	foreignKey({
 			columns: [table.enactedById],
@@ -1285,6 +1287,11 @@ export const laws = pgTable("laws", {
 			columns: [table.kingdomId],
 			foreignColumns: [kingdoms.id],
 			name: "laws_kingdom_id_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+			columns: [table.townId],
+			foreignColumns: [towns.id],
+			name: "laws_town_id_fkey"
 		}).onUpdate("cascade").onDelete("cascade"),
 ]);
 
@@ -2747,6 +2754,37 @@ export const townUpgrades = pgTable("town_upgrades", {
 		columns: [table.purchasedById],
 		foreignColumns: [characters.id],
 		name: "town_upgrades_purchased_by_id_fkey"
+	}).onUpdate("cascade").onDelete("set null"),
+]);
+
+// ============================================================
+// Item Price Ceilings (G3 — mayor-set max prices per item per town)
+// ============================================================
+
+export const itemPriceCeilings = pgTable("item_price_ceilings", {
+	id: text().primaryKey().notNull(),
+	townId: text("town_id").notNull(),
+	itemTemplateId: text("item_template_id").notNull(),
+	maxPrice: integer("max_price").notNull(),
+	setById: text("set_by_id"),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	unique("item_price_ceilings_town_id_item_template_id_unique").on(table.townId, table.itemTemplateId),
+	index("item_price_ceilings_town_id_idx").using("btree", table.townId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+		columns: [table.townId],
+		foreignColumns: [towns.id],
+		name: "item_price_ceilings_town_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.itemTemplateId],
+		foreignColumns: [itemTemplates.id],
+		name: "item_price_ceilings_item_template_id_fkey"
+	}).onUpdate("cascade"),
+	foreignKey({
+		columns: [table.setById],
+		foreignColumns: [characters.id],
+		name: "item_price_ceilings_set_by_id_fkey"
 	}).onUpdate("cascade").onDelete("set null"),
 ]);
 

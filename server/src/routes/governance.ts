@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../lib/db';
 import { eq, and, or, desc, sql, count, lte } from 'drizzle-orm';
-import { kingdoms, towns, laws, lawVotes, councilMembers, townPolicies, townTreasuries, wars, characters, townResources, buildings, townProjects, travelRoutes, townMetrics, townUpgrades } from '@database/tables';
+import { kingdoms, towns, laws, lawVotes, councilMembers, townPolicies, townTreasuries, wars, characters, townResources, buildings, townProjects, travelRoutes, townMetrics, townUpgrades, itemPriceCeilings, itemTemplates } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
@@ -12,6 +12,7 @@ import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { logTownEvent } from '../services/history-logger';
 import { PROJECT_TYPES, EMERGENCY_SPENDING_TYPES, SHERIFF_PATROL_CONFIG, MAX_CONCURRENT_PROJECTS, MAX_EMERGENCY_PER_DAY, UPGRADE_TYPES, DEGRADATION_THRESHOLD_DAYS, type ProjectType, type EmergencySpendingType, type UpgradeType } from '@shared/data/town-projects-config';
+import { TRADE_POLICY_CONFIG, TOWN_LAW_TYPES, type TownLawType } from '@shared/data/trade-policy-config';
 import { getTownUpgradeEffects } from '../services/town-upgrades';
 import crypto from 'crypto';
 
@@ -138,6 +139,11 @@ router.post('/vote-law', authGuard, characterGuard, requireTown, validate(voteLa
 
     if (law.status !== 'PROPOSED' && law.status !== 'VOTING') {
       return res.status(400).json({ error: 'Law is not open for voting' });
+    }
+
+    // Town laws (kingdomId null) don't go through voting
+    if (!law.kingdomId) {
+      return res.status(400).json({ error: 'Town laws are not subject to council voting' });
     }
 
     // Check if character is a council member for this kingdom
@@ -1558,6 +1564,332 @@ router.post('/downgrade-upgrade', authGuard, characterGuard, requireTown, valida
   } catch (error) {
     if (handleDbError(error, res, 'governance-downgrade-upgrade', req)) return;
     logRouteError(req, 500, 'Downgrade upgrade error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// G3 — Trade Policies, Price Ceilings, Market Rules, Town Laws
+// ══════════════════════════════════════════════════════════════
+
+const setSecularTariffSchema = z.object({
+  townId: z.string().min(1),
+  rate: z.number().min(TRADE_POLICY_CONFIG.minSecularTariff).max(TRADE_POLICY_CONFIG.maxSecularTariff),
+});
+
+const setPriceCeilingSchema = z.object({
+  townId: z.string().min(1),
+  itemTemplateId: z.string().min(1),
+  maxPrice: z.number().int().min(1),
+});
+
+const removePriceCeilingSchema = z.object({
+  townId: z.string().min(1),
+  itemTemplateId: z.string().min(1),
+});
+
+const setMarketRulesSchema = z.object({
+  townId: z.string().min(1),
+  minListingPrice: z.number().int().min(0).optional(),
+  maxListingQuantity: z.number().int().min(0).max(TRADE_POLICY_CONFIG.maxListingQuantityLimit).optional(),
+});
+
+const enactTownLawSchema = z.object({
+  townId: z.string().min(1),
+  title: z.string().min(1).max(200),
+  description: z.string().optional(),
+  lawType: z.enum(TOWN_LAW_TYPES as unknown as [string, ...string[]]).default('GENERAL'),
+  effects: z.record(z.string(), z.unknown()).optional(),
+});
+
+const repealTownLawSchema = z.object({
+  lawId: z.string().min(1),
+});
+
+// POST /set-secular-tariff — Mayor sets visitor tariff (0-15%)
+router.post('/set-secular-tariff', authGuard, characterGuard, requireTown, validate(setSecularTariffSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId, rate } = req.body;
+    const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling.' });
+    }
+
+    const town = await db.query.towns.findFirst({ where: eq(towns.id, townId) });
+    if (!town) return res.status(404).json({ error: 'Town not found' });
+    if (town.mayorId !== character.id) {
+      return res.status(403).json({ error: 'Only the mayor can set tariffs' });
+    }
+
+    const policy = await db.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId) });
+    if (policy) {
+      const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+      tp.secularTariffRate = rate;
+      await db.update(townPolicies).set({ tradePolicy: tp }).where(eq(townPolicies.townId, townId));
+    }
+
+    logTownEvent(townId, 'GOVERNANCE', `Secular Tariff Set: ${(rate * 100).toFixed(0)}%`, `Mayor ${character.name} set the visitor tariff to ${(rate * 100).toFixed(0)}%`, character.id).catch(() => {});
+
+    return res.json({ secularTariffRate: rate });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-set-secular-tariff', req)) return;
+    logRouteError(req, 500, 'Set secular tariff error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /set-price-ceiling — Mayor sets max price for an item
+router.post('/set-price-ceiling', authGuard, characterGuard, requireTown, validate(setPriceCeilingSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId, itemTemplateId, maxPrice } = req.body;
+    const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling.' });
+    }
+
+    const town = await db.query.towns.findFirst({ where: eq(towns.id, townId) });
+    if (!town) return res.status(404).json({ error: 'Town not found' });
+    if (town.mayorId !== character.id) {
+      return res.status(403).json({ error: 'Only the mayor can set price ceilings' });
+    }
+
+    // Verify item template exists
+    const template = await db.query.itemTemplates.findFirst({ where: eq(itemTemplates.id, itemTemplateId), columns: { id: true, name: true } });
+    if (!template) return res.status(404).json({ error: 'Item not found' });
+
+    // Upsert
+    const existing = await db.select().from(itemPriceCeilings).where(
+      and(eq(itemPriceCeilings.townId, townId), eq(itemPriceCeilings.itemTemplateId, itemTemplateId))
+    );
+
+    let ceiling;
+    if (existing[0]) {
+      [ceiling] = await db.update(itemPriceCeilings)
+        .set({ maxPrice, setById: character.id })
+        .where(eq(itemPriceCeilings.id, existing[0].id))
+        .returning();
+    } else {
+      [ceiling] = await db.insert(itemPriceCeilings).values({
+        id: crypto.randomUUID(),
+        townId,
+        itemTemplateId,
+        maxPrice,
+        setById: character.id,
+      }).returning();
+    }
+
+    logTownEvent(townId, 'GOVERNANCE', `Price Ceiling Set: ${template.name}`, `Mayor ${character.name} set max price for ${template.name} to ${maxPrice}g`, character.id).catch(() => {});
+
+    return res.status(201).json({ ceiling, itemName: template.name });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-set-price-ceiling', req)) return;
+    logRouteError(req, 500, 'Set price ceiling error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// DELETE /remove-price-ceiling — Mayor removes a price ceiling
+router.delete('/remove-price-ceiling', authGuard, characterGuard, requireTown, validate(removePriceCeilingSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId, itemTemplateId } = req.body;
+    const character = req.character!;
+
+    const town = await db.query.towns.findFirst({ where: eq(towns.id, townId) });
+    if (!town) return res.status(404).json({ error: 'Town not found' });
+    if (town.mayorId !== character.id) {
+      return res.status(403).json({ error: 'Only the mayor can remove price ceilings' });
+    }
+
+    const result = await db.delete(itemPriceCeilings).where(
+      and(eq(itemPriceCeilings.townId, townId), eq(itemPriceCeilings.itemTemplateId, itemTemplateId))
+    );
+
+    if ((result.rowCount ?? 0) === 0) {
+      return res.status(404).json({ error: 'Price ceiling not found' });
+    }
+
+    logTownEvent(townId, 'GOVERNANCE', 'Price Ceiling Removed', `Mayor ${character.name} removed a price ceiling`, character.id).catch(() => {});
+
+    return res.json({ message: 'Price ceiling removed' });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-remove-price-ceiling', req)) return;
+    logRouteError(req, 500, 'Remove price ceiling error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /price-ceilings/:townId — View all price ceilings
+router.get('/price-ceilings/:townId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId } = req.params;
+
+    const ceilings = await db.select({
+      id: itemPriceCeilings.id,
+      itemTemplateId: itemPriceCeilings.itemTemplateId,
+      itemName: itemTemplates.name,
+      maxPrice: itemPriceCeilings.maxPrice,
+      createdAt: itemPriceCeilings.createdAt,
+    }).from(itemPriceCeilings)
+      .innerJoin(itemTemplates, eq(itemPriceCeilings.itemTemplateId, itemTemplates.id))
+      .where(eq(itemPriceCeilings.townId, townId));
+
+    return res.json({ ceilings });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-price-ceilings', req)) return;
+    logRouteError(req, 500, 'View price ceilings error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /set-market-rules — Mayor sets listing floor and quantity cap
+router.post('/set-market-rules', authGuard, characterGuard, requireTown, validate(setMarketRulesSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId, minListingPrice, maxListingQuantity } = req.body;
+    const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling.' });
+    }
+
+    const town = await db.query.towns.findFirst({ where: eq(towns.id, townId) });
+    if (!town) return res.status(404).json({ error: 'Town not found' });
+    if (town.mayorId !== character.id) {
+      return res.status(403).json({ error: 'Only the mayor can set market rules' });
+    }
+
+    const policy = await db.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId) });
+    if (policy) {
+      const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+      if (minListingPrice !== undefined) tp.minListingPrice = minListingPrice;
+      if (maxListingQuantity !== undefined) tp.maxListingQuantity = maxListingQuantity;
+      await db.update(townPolicies).set({ tradePolicy: tp }).where(eq(townPolicies.townId, townId));
+    }
+
+    logTownEvent(townId, 'GOVERNANCE', 'Market Rules Updated', `Mayor ${character.name} updated market rules`, character.id).catch(() => {});
+
+    return res.json({ minListingPrice: minListingPrice ?? 0, maxListingQuantity: maxListingQuantity ?? 0 });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-set-market-rules', req)) return;
+    logRouteError(req, 500, 'Set market rules error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /enact-town-law — Mayor enacts a local law (executive, no vote)
+router.post('/enact-town-law', authGuard, characterGuard, requireTown, validate(enactTownLawSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId, title, description, lawType, effects } = req.body;
+    const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling.' });
+    }
+
+    const town = await db.query.towns.findFirst({ where: eq(towns.id, townId) });
+    if (!town) return res.status(404).json({ error: 'Town not found' });
+    if (town.mayorId !== character.id) {
+      return res.status(403).json({ error: 'Only the mayor can enact town laws' });
+    }
+
+    // Check max active town laws
+    const activeCount = await db.select({ cnt: count() })
+      .from(laws)
+      .where(and(eq(laws.townId, townId), eq(laws.status, 'ACTIVE')));
+    if ((activeCount[0]?.cnt ?? 0) >= TRADE_POLICY_CONFIG.maxActiveTownLaws) {
+      return res.status(400).json({ error: `Maximum ${TRADE_POLICY_CONFIG.maxActiveTownLaws} active town laws allowed` });
+    }
+
+    // TODO: Solimene referendums can override town laws. When a referendum passes with
+    // policyType: 'repeal_law', it should set the targeted law to REPEALED. Implementation
+    // deferred — the referendum system would need a new policyType.
+
+    const [law] = await db.insert(laws).values({
+      id: crypto.randomUUID(),
+      townId,
+      kingdomId: null,
+      title,
+      description: description ?? null,
+      lawType: lawType ?? 'GENERAL',
+      effects: effects ?? {},
+      enactedById: character.id,
+      enactedAt: new Date().toISOString(),
+      proposedAt: new Date().toISOString(),
+      status: 'ACTIVE',
+      votesFor: 0,
+      votesAgainst: 0,
+      updatedAt: new Date().toISOString(),
+    }).returning();
+
+    logTownEvent(townId, 'GOVERNANCE', `Town Law Enacted: ${title}`, `Mayor ${character.name} enacted town law: ${title}`, character.id).catch(() => {});
+
+    return res.status(201).json({ law });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-enact-town-law', req)) return;
+    logRouteError(req, 500, 'Enact town law error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /repeal-town-law — Mayor repeals a town law
+router.post('/repeal-town-law', authGuard, characterGuard, requireTown, validate(repealTownLawSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { lawId } = req.body;
+    const character = req.character!;
+
+    const law = await db.query.laws.findFirst({ where: eq(laws.id, lawId) });
+    if (!law) return res.status(404).json({ error: 'Law not found' });
+    if (!law.townId) return res.status(400).json({ error: 'This is not a town law' });
+    if (law.status !== 'ACTIVE') return res.status(400).json({ error: 'Law is not active' });
+
+    const town = await db.query.towns.findFirst({ where: eq(towns.id, law.townId) });
+    if (!town || town.mayorId !== character.id) {
+      return res.status(403).json({ error: 'Only the mayor can repeal town laws' });
+    }
+
+    await db.update(laws)
+      .set({ status: 'REPEALED', updatedAt: new Date().toISOString() })
+      .where(eq(laws.id, lawId));
+
+    logTownEvent(law.townId, 'GOVERNANCE', `Town Law Repealed: ${law.title}`, `Mayor ${character.name} repealed town law: ${law.title}`, character.id).catch(() => {});
+
+    return res.json({ message: `Law "${law.title}" repealed` });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-repeal-town-law', req)) return;
+    logRouteError(req, 500, 'Repeal town law error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /town-laws/:townId — View town laws (ACTIVE + REPEALED)
+router.get('/town-laws/:townId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId } = req.params;
+
+    const townLaws = await db.query.laws.findMany({
+      where: eq(laws.townId, townId),
+      with: {
+        character: { columns: { id: true, name: true } },
+      },
+      orderBy: [desc(laws.enactedAt)],
+    });
+
+    return res.json({
+      laws: townLaws.map(l => ({
+        id: l.id,
+        title: l.title,
+        description: l.description,
+        lawType: l.lawType,
+        status: l.status,
+        effects: l.effects,
+        enactedBy: l.character,
+        enactedAt: l.enactedAt,
+      })),
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-town-laws', req)) return;
+    logRouteError(req, 500, 'View town laws error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

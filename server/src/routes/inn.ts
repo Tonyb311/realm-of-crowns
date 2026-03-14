@@ -438,9 +438,11 @@ router.post('/:buildingId/menu/buy', authGuard, characterGuard, validate(buySche
 
     const basePrice = menuItem.price * quantity;
 
-    // Vareth visitor surcharge (non-residents pay extra in Vareth-dominant towns)
-    let innSurcharge = 0;
+    // Vareth visitor surcharge + secular tariff (non-residents)
+    let innVarethSurcharge = 0;
+    let innSecularSurcharge = 0;
     if (character.homeTownId !== building.townId) {
+      // Vareth religious surcharge
       const dominantChapter = await db.query.churchChapters.findFirst({
         where: and(eq(churchChapters.townId, building.townId), eq(churchChapters.isDominant, true)),
       });
@@ -455,9 +457,21 @@ router.post('/:buildingId/menu/buy', authGuard, characterGuard, validate(buySche
           const tariffRate = typeof tp?.varethTariffRate === 'number' ? tp.varethTariffRate : 0.10;
           surchargeRate = Math.max(0.10, Math.min(0.25, tariffRate));
         }
-        innSurcharge = Math.floor(basePrice * surchargeRate);
+        innVarethSurcharge = Math.floor(basePrice * surchargeRate);
+      }
+
+      // Secular tariff (mayor-set, independent of Vareth)
+      const secPolicy = await db.query.townPolicies.findFirst({
+        where: eq(townPolicies.townId, building.townId),
+        columns: { tradePolicy: true },
+      });
+      const secTp = (secPolicy?.tradePolicy as Record<string, any>) ?? {};
+      const secularRate = typeof secTp.secularTariffRate === 'number' ? secTp.secularTariffRate : 0;
+      if (secularRate > 0) {
+        innSecularSurcharge = Math.floor(basePrice * secularRate);
       }
     }
+    const innSurcharge = innVarethSurcharge + innSecularSurcharge;
     const totalPrice = basePrice + innSurcharge;
 
     if (character.gold < totalPrice) {
@@ -483,16 +497,23 @@ router.post('/:buildingId/menu/buy', authGuard, characterGuard, validate(buySche
         gold: sql`${characters.gold} - ${totalPrice}`,
       }).where(eq(characters.id, character.id));
 
-      // 1b. Credit Vareth church treasury with surcharge
-      if (innSurcharge > 0) {
+      // 1b. Credit Vareth church treasury with Vareth surcharge
+      if (innVarethSurcharge > 0) {
         const varethChapter = await tx.query.churchChapters.findFirst({
           where: and(eq(churchChapters.townId, building.townId), eq(churchChapters.godId, 'vareth'), eq(churchChapters.isDominant, true)),
         });
         if (varethChapter) {
           await tx.update(churchChapters)
-            .set({ treasury: sql`${churchChapters.treasury} + ${innSurcharge}` })
+            .set({ treasury: sql`${churchChapters.treasury} + ${innVarethSurcharge}` })
             .where(eq(churchChapters.id, varethChapter.id));
         }
+      }
+
+      // 1c. Credit town treasury with secular tariff (separate from tax — Veradine tax reduction does NOT apply)
+      if (innSecularSurcharge > 0) {
+        await tx.update(townTreasuries)
+          .set({ balance: sql`${townTreasuries.balance} + ${innSecularSurcharge}` })
+          .where(eq(townTreasuries.townId, building.townId));
       }
 
       // 2. Credit owner

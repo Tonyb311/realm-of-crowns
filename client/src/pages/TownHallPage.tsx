@@ -25,6 +25,9 @@ import {
   Clock,
   Check,
   X,
+  Scale,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import api from '../services/api';
 import GoldAmount from '../components/shared/GoldAmount';
@@ -34,6 +37,7 @@ import { PageHeader } from '../components/ui/realm-index';
 import { buildingTypeLabel } from '@shared/data/building-labels';
 import { METRIC_LABELS, type TownMetricType } from '@shared/data/town-metrics-config';
 import { PROJECT_TYPES, EMERGENCY_SPENDING_TYPES, SHERIFF_PATROL_CONFIG, PROJECT_CATEGORIES, UPGRADE_TYPES, DEGRADATION_THRESHOLD_DAYS, type ProjectType, type EmergencySpendingType, type UpgradeType } from '@shared/data/town-projects-config';
+import { TRADE_POLICY_CONFIG, TOWN_LAW_TYPES } from '@shared/data/trade-policy-config';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -191,6 +195,28 @@ interface UpgradesResponse {
   upgrades: TownUpgrade[];
   available: { upgradeType: string; name: string; description: string; tier1Cost: number; tier1Maintenance: number; tier1Effects: Record<string, number> }[];
   totalMaintenance: number;
+}
+
+interface PriceCeiling {
+  id: string;
+  townId: string;
+  itemTemplateId: string;
+  maxPrice: number;
+  setById: string;
+  createdAt: string;
+  itemName: string;
+}
+
+interface TownLaw {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  type: string;
+  townId: string;
+  proposedById: string;
+  proposedByName: string;
+  createdAt: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -432,6 +458,96 @@ export default function TownHallPage() {
   });
 
   // -------------------------------------------------------------------------
+  // Trade Policy + Town Laws
+  // -------------------------------------------------------------------------
+  const { data: priceCeilingsData } = useQuery<{ ceilings: PriceCeiling[] }>({
+    queryKey: ['governance', 'price-ceilings', townId],
+    queryFn: async () => (await api.get(`/governance/price-ceilings/${townId}`)).data,
+    enabled: !!townId,
+  });
+
+  const { data: townLawsData } = useQuery<{ laws: TownLaw[] }>({
+    queryKey: ['governance', 'town-laws', townId],
+    queryFn: async () => (await api.get(`/governance/town-laws/${townId}`)).data,
+    enabled: !!townId,
+  });
+
+  // Trade policy form state
+  const [tariffSlider, setTariffSlider] = useState<number>(0);
+  const [tariffInitialized, setTariffInitialized] = useState(false);
+  const [minListingPrice, setMinListingPrice] = useState<string>('');
+  const [maxListingQty, setMaxListingQty] = useState<string>('');
+  const [ceilingItemId, setCeilingItemId] = useState<string>('');
+  const [ceilingMaxPrice, setCeilingMaxPrice] = useState<string>('');
+
+  // Town law form state
+  const [lawTitle, setLawTitle] = useState('');
+  const [lawDescription, setLawDescription] = useState('');
+  const [lawType, setLawType] = useState<string>(TOWN_LAW_TYPES[0]);
+  const [showRepealedLaws, setShowRepealedLaws] = useState(false);
+  const [confirmRepealId, setConfirmRepealId] = useState<string | null>(null);
+
+  const setTariffMutation = useMutation({
+    mutationFn: async (data: { townId: string; secularTariffRate: number }) => {
+      return (await api.post('/governance/set-secular-tariff', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['governance', 'town-info'] });
+    },
+  });
+
+  const setMarketRulesMutation = useMutation({
+    mutationFn: async (data: { townId: string; minListingPrice?: number; maxListingQuantity?: number }) => {
+      return (await api.post('/governance/set-market-rules', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['governance', 'town-info'] });
+    },
+  });
+
+  const addPriceCeilingMutation = useMutation({
+    mutationFn: async (data: { townId: string; itemTemplateId: string; maxPrice: number }) => {
+      return (await api.post('/governance/set-price-ceiling', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['governance', 'price-ceilings'] });
+      setCeilingItemId('');
+      setCeilingMaxPrice('');
+    },
+  });
+
+  const removePriceCeilingMutation = useMutation({
+    mutationFn: async (data: { townId: string; itemTemplateId: string }) => {
+      return (await api.delete('/governance/remove-price-ceiling', { data })).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['governance', 'price-ceilings'] });
+    },
+  });
+
+  const enactLawMutation = useMutation({
+    mutationFn: async (data: { townId: string; title: string; description: string; lawType: string }) => {
+      return (await api.post('/governance/enact-town-law', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['governance', 'town-laws'] });
+      setLawTitle('');
+      setLawDescription('');
+      setLawType(TOWN_LAW_TYPES[0]);
+    },
+  });
+
+  const repealLawMutation = useMutation({
+    mutationFn: async (data: { lawId: string }) => {
+      return (await api.post('/governance/repeal-town-law', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['governance', 'town-laws'] });
+      setConfirmRepealId(null);
+    },
+  });
+
+  // -------------------------------------------------------------------------
   // Relocation mutations
   // -------------------------------------------------------------------------
   const previewMutation = useMutation({
@@ -507,6 +623,14 @@ export default function TownHallPage() {
   const activeProjects = (projectsData?.projects ?? []).filter(p => p.status === 'IN_PROGRESS');
   const recentCompleted = (projectsData?.projects ?? []).filter(p => p.status === 'COMPLETED').slice(0, 5);
   const adjacentRoutes = (routesData?.routes ?? []) as AdjacentRoute[];
+
+  // Trade policy derived values (after town is available)
+  const currentTariff = typeof town?.tradePolicy?.secularTariffRate === 'number'
+    ? (town.tradePolicy.secularTariffRate as number) : 0;
+  if (!tariffInitialized && town) {
+    setTariffSlider(Math.round(currentTariff * 100));
+    setTariffInitialized(true);
+  }
 
   // -------------------------------------------------------------------------
   // Render
@@ -1482,6 +1606,332 @@ export default function TownHallPage() {
                 </div>
               </section>
             </div>
+          </div>
+        )}
+
+        {/* ================================================================ */}
+        {/* Trade Policy & Town Laws — home town residents only             */}
+        {/* ================================================================ */}
+        {town && isHomeTown && (
+          <div className="mt-10 border-t border-realm-border pt-8 space-y-8">
+            {/* Trade Policy */}
+            <section>
+              <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
+                <Scale className="w-5 h-5 text-realm-gold-400" />
+                Trade Policy
+              </h2>
+
+              <div className="space-y-4">
+                {/* Secular Tariff */}
+                <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
+                  <h3 className="text-sm font-display text-realm-text-secondary mb-2">Secular Tariff</h3>
+                  <p className="text-[11px] text-realm-text-muted mb-3">
+                    Surcharge on non-resident market purchases. Revenue goes to town treasury.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min={0}
+                      max={TRADE_POLICY_CONFIG.maxSecularTariff * 100}
+                      step={1}
+                      value={tariffSlider}
+                      onChange={e => setTariffSlider(Number(e.target.value))}
+                      disabled={!isMayor}
+                      className="flex-1 h-2 accent-realm-gold-500"
+                    />
+                    <span className="text-sm font-display text-realm-gold-400 w-12 text-right">{tariffSlider}%</span>
+                    {isMayor && (
+                      <button
+                        onClick={() => townId && setTariffMutation.mutate({ townId, secularTariffRate: tariffSlider / 100 })}
+                        disabled={setTariffMutation.isPending || tariffSlider === Math.round(currentTariff * 100)}
+                        className="px-3 py-1.5 text-[11px] bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400 font-display rounded-sm hover:bg-realm-gold-500/20 transition-colors disabled:opacity-40"
+                      >
+                        {setTariffMutation.isPending ? 'Saving...' : 'Set'}
+                      </button>
+                    )}
+                  </div>
+                  {setTariffMutation.isError && (
+                    <p className="text-xs text-realm-danger mt-1">{(setTariffMutation.error as any)?.response?.data?.error ?? 'Failed'}</p>
+                  )}
+                  {setTariffMutation.isSuccess && (
+                    <p className="text-xs text-realm-success mt-1">Tariff updated.</p>
+                  )}
+                </div>
+
+                {/* Market Rules */}
+                <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
+                  <h3 className="text-sm font-display text-realm-text-secondary mb-2">Market Rules</h3>
+                  <p className="text-[11px] text-realm-text-muted mb-3">
+                    Set minimum listing price and maximum listing quantity for the local market.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className="text-[10px] text-realm-text-muted">Min Price (gold)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={minListingPrice}
+                        onChange={e => setMinListingPrice(e.target.value)}
+                        placeholder={String(town.tradePolicy?.minListingPrice ?? 0)}
+                        disabled={!isMayor}
+                        className="w-full mt-1 px-2 py-1.5 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary placeholder:text-realm-text-muted/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-realm-text-muted">Max Quantity</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={maxListingQty}
+                        onChange={e => setMaxListingQty(e.target.value)}
+                        placeholder={String(town.tradePolicy?.maxListingQuantity ?? 0)}
+                        disabled={!isMayor}
+                        className="w-full mt-1 px-2 py-1.5 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary placeholder:text-realm-text-muted/50"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-realm-text-muted mb-2">
+                    Current: min price {String(town.tradePolicy?.minListingPrice ?? 0)}g, max qty {String(town.tradePolicy?.maxListingQuantity ?? '∞')}
+                    {' '}(0 = no limit)
+                  </p>
+                  {isMayor && (
+                    <button
+                      onClick={() => {
+                        if (!townId) return;
+                        const payload: { townId: string; minListingPrice?: number; maxListingQuantity?: number } = { townId };
+                        if (minListingPrice !== '') payload.minListingPrice = Number(minListingPrice);
+                        if (maxListingQty !== '') payload.maxListingQuantity = Number(maxListingQty);
+                        setMarketRulesMutation.mutate(payload);
+                      }}
+                      disabled={setMarketRulesMutation.isPending || (minListingPrice === '' && maxListingQty === '')}
+                      className="w-full py-2 text-xs bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400 font-display rounded-sm hover:bg-realm-gold-500/20 transition-colors disabled:opacity-40"
+                    >
+                      {setMarketRulesMutation.isPending ? 'Saving...' : 'Update Market Rules'}
+                    </button>
+                  )}
+                  {setMarketRulesMutation.isError && (
+                    <p className="text-xs text-realm-danger mt-1">{(setMarketRulesMutation.error as any)?.response?.data?.error ?? 'Failed'}</p>
+                  )}
+                </div>
+
+                {/* Price Ceilings */}
+                <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
+                  <h3 className="text-sm font-display text-realm-text-secondary mb-2">Price Ceilings</h3>
+                  <p className="text-[11px] text-realm-text-muted mb-3">
+                    Maximum allowed listing price per item type. Sellers cannot list above the ceiling.
+                  </p>
+
+                  {(priceCeilingsData?.ceilings?.length ?? 0) > 0 ? (
+                    <div className="space-y-1 mb-3">
+                      {priceCeilingsData!.ceilings.map(c => (
+                        <div key={c.id} className="flex items-center justify-between bg-realm-bg-800/50 rounded-sm px-3 py-2">
+                          <span className="text-xs text-realm-text-secondary">{c.itemName}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-realm-gold-400 font-display">{c.maxPrice}g max</span>
+                            {isMayor && (
+                              <button
+                                onClick={() => townId && removePriceCeilingMutation.mutate({ townId, itemTemplateId: c.itemTemplateId })}
+                                disabled={removePriceCeilingMutation.isPending}
+                                className="p-1 text-realm-danger/70 hover:text-realm-danger transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-realm-text-muted mb-3 italic">No price ceilings set.</p>
+                  )}
+
+                  {isMayor && (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={ceilingItemId}
+                        onChange={e => setCeilingItemId(e.target.value)}
+                        placeholder="Item template ID"
+                        className="flex-1 px-2 py-1.5 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary placeholder:text-realm-text-muted/50"
+                      />
+                      <input
+                        type="number"
+                        min={1}
+                        value={ceilingMaxPrice}
+                        onChange={e => setCeilingMaxPrice(e.target.value)}
+                        placeholder="Max gold"
+                        className="w-24 px-2 py-1.5 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary placeholder:text-realm-text-muted/50"
+                      />
+                      <button
+                        onClick={() => {
+                          if (!townId || !ceilingItemId || !ceilingMaxPrice) return;
+                          addPriceCeilingMutation.mutate({ townId, itemTemplateId: ceilingItemId, maxPrice: Number(ceilingMaxPrice) });
+                        }}
+                        disabled={addPriceCeilingMutation.isPending || !ceilingItemId || !ceilingMaxPrice}
+                        className="px-3 py-1.5 text-[11px] bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400 rounded-sm hover:bg-realm-gold-500/20 transition-colors disabled:opacity-40"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                  {addPriceCeilingMutation.isError && (
+                    <p className="text-xs text-realm-danger mt-1">{(addPriceCeilingMutation.error as any)?.response?.data?.error ?? 'Failed'}</p>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* Town Laws */}
+            <section>
+              <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
+                <ScrollText className="w-5 h-5 text-realm-gold-400" />
+                Town Laws
+              </h2>
+
+              {/* Active laws */}
+              {(() => {
+                const activeLaws = (townLawsData?.laws ?? []).filter(l => l.status === 'ACTIVE');
+                const repealedLaws = (townLawsData?.laws ?? []).filter(l => l.status === 'REPEALED');
+                return (
+                  <div className="space-y-3">
+                    {activeLaws.length > 0 ? (
+                      activeLaws.map(law => (
+                        <div key={law.id} className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
+                          <div className="flex items-start justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-display text-realm-text-primary">{law.title}</h3>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-realm-teal-300/10 text-realm-teal-300 border border-realm-teal-300/30">
+                                {law.type}
+                              </span>
+                            </div>
+                            {isMayor && (
+                              confirmRepealId === law.id ? (
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => repealLawMutation.mutate({ lawId: law.id })}
+                                    disabled={repealLawMutation.isPending}
+                                    className="px-2 py-1 text-[10px] bg-realm-danger/20 border border-realm-danger/40 text-realm-danger rounded-sm hover:bg-realm-danger/30"
+                                  >
+                                    Confirm
+                                  </button>
+                                  <button
+                                    onClick={() => setConfirmRepealId(null)}
+                                    className="px-2 py-1 text-[10px] border border-realm-border text-realm-text-muted rounded-sm hover:bg-realm-bg-800"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setConfirmRepealId(law.id)}
+                                  className="px-2 py-1 text-[10px] border border-realm-danger/30 text-realm-danger/70 rounded-sm hover:bg-realm-danger/10 transition-colors"
+                                >
+                                  Repeal
+                                </button>
+                              )
+                            )}
+                          </div>
+                          <p className="text-xs text-realm-text-muted">{law.description}</p>
+                          <p className="text-[10px] text-realm-text-muted/70 mt-1">
+                            Enacted by {law.proposedByName} on {new Date(law.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="bg-realm-bg-700/50 border border-realm-border/50 rounded-lg p-4">
+                        <p className="text-sm text-realm-text-muted text-center">No active town laws.</p>
+                      </div>
+                    )}
+
+                    {repealLawMutation.isError && (
+                      <p className="text-xs text-realm-danger">{(repealLawMutation.error as any)?.response?.data?.error ?? 'Failed'}</p>
+                    )}
+
+                    {/* Enact new law (mayor) */}
+                    {isMayor && (
+                      <div className="bg-realm-bg-700 border border-realm-gold-500/20 rounded-lg p-4">
+                        <h3 className="text-sm font-display text-realm-gold-400 mb-3 flex items-center gap-2">
+                          <Plus className="w-4 h-4" />
+                          Enact New Law
+                        </h3>
+                        <p className="text-[10px] text-realm-text-muted mb-3">
+                          {activeLaws.length}/{TRADE_POLICY_CONFIG.maxActiveTownLaws} law slots used.
+                          Laws are executive declarations — they take effect immediately.
+                        </p>
+                        <div className="space-y-2 mb-3">
+                          <input
+                            type="text"
+                            value={lawTitle}
+                            onChange={e => setLawTitle(e.target.value)}
+                            placeholder="Law title"
+                            maxLength={100}
+                            className="w-full px-2 py-1.5 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary placeholder:text-realm-text-muted/50"
+                          />
+                          <textarea
+                            value={lawDescription}
+                            onChange={e => setLawDescription(e.target.value)}
+                            placeholder="Description / decree text"
+                            maxLength={500}
+                            rows={3}
+                            className="w-full px-2 py-1.5 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary placeholder:text-realm-text-muted/50 resize-none"
+                          />
+                          <select
+                            value={lawType}
+                            onChange={e => setLawType(e.target.value)}
+                            className="w-full px-2 py-1.5 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary"
+                          >
+                            {TOWN_LAW_TYPES.map(t => (
+                              <option key={t} value={t}>{t}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (!townId || !lawTitle.trim() || !lawDescription.trim()) return;
+                            enactLawMutation.mutate({ townId, title: lawTitle.trim(), description: lawDescription.trim(), lawType });
+                          }}
+                          disabled={enactLawMutation.isPending || !lawTitle.trim() || !lawDescription.trim() || activeLaws.length >= TRADE_POLICY_CONFIG.maxActiveTownLaws}
+                          className="w-full py-2 text-xs bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400 font-display rounded-sm hover:bg-realm-gold-500/20 transition-colors disabled:opacity-40"
+                        >
+                          {enactLawMutation.isPending ? 'Enacting...' : 'Enact Law'}
+                        </button>
+                        {enactLawMutation.isError && (
+                          <p className="text-xs text-realm-danger mt-1">{(enactLawMutation.error as any)?.response?.data?.error ?? 'Failed'}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Repealed laws history */}
+                    {repealedLaws.length > 0 && (
+                      <div>
+                        <button
+                          onClick={() => setShowRepealedLaws(!showRepealedLaws)}
+                          className="flex items-center gap-1.5 text-[11px] text-realm-text-muted hover:text-realm-text-secondary transition-colors"
+                        >
+                          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showRepealedLaws ? 'rotate-180' : ''}`} />
+                          {repealedLaws.length} repealed law{repealedLaws.length > 1 ? 's' : ''}
+                        </button>
+                        {showRepealedLaws && (
+                          <div className="mt-2 space-y-2">
+                            {repealedLaws.map(law => (
+                              <div key={law.id} className="bg-realm-bg-800/50 border border-realm-border/30 rounded-lg p-3 opacity-60">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="text-xs font-display text-realm-text-muted line-through">{law.title}</h3>
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-realm-danger/10 text-realm-danger/70 border border-realm-danger/20">
+                                    REPEALED
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-realm-text-muted/70">{law.description}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </section>
           </div>
         )}
 

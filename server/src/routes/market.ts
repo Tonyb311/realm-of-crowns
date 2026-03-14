@@ -22,6 +22,7 @@ import {
   auctionCycles,
   churchChapters,
   townPolicies,
+  itemPriceCeilings,
 } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
@@ -120,6 +121,36 @@ router.post('/list', authGuard, characterGuard, validate(listSchema), async (req
     });
     if (equipped) {
       return res.status(400).json({ error: 'Cannot list an equipped item. Unequip it first.' });
+    }
+
+    // G3: Validate price ceiling, min listing price, max listing quantity
+    const townPolicy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, character.currentTownId!),
+      columns: { tradePolicy: true },
+    });
+    const tp = (townPolicy?.tradePolicy as Record<string, any>) ?? {};
+
+    // Check per-item price ceiling
+    const ceiling = await db.select({ maxPrice: itemPriceCeilings.maxPrice })
+      .from(itemPriceCeilings)
+      .where(and(
+        eq(itemPriceCeilings.townId, character.currentTownId!),
+        eq(itemPriceCeilings.itemTemplateId, inventoryEntry.item.templateId),
+      ));
+    if (ceiling[0] && price > ceiling[0].maxPrice) {
+      return res.status(400).json({ error: `Price exceeds the maximum of ${ceiling[0].maxPrice}g set by the mayor` });
+    }
+
+    // Check minimum listing price
+    const minListingPrice = (tp.minListingPrice as number) ?? 0;
+    if (minListingPrice > 0 && price < minListingPrice) {
+      return res.status(400).json({ error: `Minimum listing price in this town is ${minListingPrice}g` });
+    }
+
+    // Check maximum listing quantity
+    const maxListingQuantity = (tp.maxListingQuantity as number) ?? 0;
+    if (maxListingQuantity > 0 && quantity > maxListingQuantity) {
+      return res.status(400).json({ error: `Maximum listing quantity in this town is ${maxListingQuantity}` });
     }
 
     const expiresAt = new Date();
@@ -429,26 +460,40 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
       return res.status(403).json({ error: restrictions.reason });
     }
 
-    // Vareth visitor surcharge (non-residents pay extra in Vareth-dominant towns)
-    let surchargeAmount = 0;
+    // Vareth visitor surcharge + secular tariff (non-residents)
+    let varethSurcharge = 0;
+    let secularSurcharge = 0;
     if (character.homeTownId !== listing.townId) {
+      // Vareth religious surcharge
       const dominantChapter = await db.query.churchChapters.findFirst({
         where: and(eq(churchChapters.townId, listing.townId), eq(churchChapters.isDominant, true)),
       });
       if (dominantChapter?.godId === 'vareth') {
         let surchargeRate = 0.10; // default 10% at dominant
         if (dominantChapter.isShrine) {
-          const policy = await db.query.townPolicies.findFirst({
+          const buyPolicy = await db.query.townPolicies.findFirst({
             where: eq(townPolicies.townId, listing.townId),
             columns: { tradePolicy: true },
           });
-          const tp = policy?.tradePolicy as Record<string, unknown> | null;
-          const tariffRate = typeof tp?.varethTariffRate === 'number' ? tp.varethTariffRate : 0.10;
+          const buyTp = buyPolicy?.tradePolicy as Record<string, unknown> | null;
+          const tariffRate = typeof buyTp?.varethTariffRate === 'number' ? buyTp.varethTariffRate : 0.10;
           surchargeRate = Math.max(0.10, Math.min(0.25, tariffRate));
         }
-        surchargeAmount = Math.floor(bidPrice * surchargeRate);
+        varethSurcharge = Math.floor(bidPrice * surchargeRate);
+      }
+
+      // Secular tariff (mayor-set, independent of Vareth)
+      const secPolicy = await db.query.townPolicies.findFirst({
+        where: eq(townPolicies.townId, listing.townId),
+        columns: { tradePolicy: true },
+      });
+      const secTp = (secPolicy?.tradePolicy as Record<string, any>) ?? {};
+      const secularRate = typeof secTp.secularTariffRate === 'number' ? secTp.secularTariffRate : 0;
+      if (secularRate > 0) {
+        secularSurcharge = Math.floor(bidPrice * secularRate);
       }
     }
+    const surchargeAmount = varethSurcharge + secularSurcharge;
     const totalEscrowCost = bidPrice + surchargeAmount;
 
     // Check available gold (gold minus already escrowed)
@@ -478,7 +523,7 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
         escrowedGold: sql`${characters.escrowedGold} + ${totalEscrowCost}`,
       }).where(eq(characters.id, character.id));
 
-      // Create buy order (store surcharge in rollBreakdown for auction resolution)
+      // Create buy order (store surcharges in rollBreakdown for auction resolution)
       const [newOrder] = await tx.insert(marketBuyOrders).values({
         id: crypto.randomUUID(),
         buyerId: character.id,
@@ -486,7 +531,7 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
         bidPrice,
         status: 'pending',
         auctionCycleId: cycle.id,
-        rollBreakdown: surchargeAmount > 0 ? { surcharge: surchargeAmount } : null,
+        rollBreakdown: surchargeAmount > 0 ? { surcharge: surchargeAmount, varethSurcharge, secularSurcharge } : null,
       }).returning();
 
       return newOrder;
