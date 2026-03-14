@@ -19,6 +19,7 @@ import {
   Scale,
   Shield,
   Skull,
+  Hammer,
 } from 'lucide-react';
 import api from '../services/api';
 import { getSocket } from '../services/socket';
@@ -248,6 +249,15 @@ export default function TownPage() {
     enabled: !!townId,
     staleTime: 60000,
   });
+
+  // Fetch active town projects for indicator
+  const { data: activeProjectsData } = useQuery<{ projects: { id: string; projectType: string; status: string; completesAt: string; config: { name: string } | null }[] }>({
+    queryKey: ['governance', 'projects', townId],
+    queryFn: async () => (await api.get(`/governance/projects/${townId}`)).data,
+    enabled: !!townId,
+    staleTime: 60000,
+  });
+  const activeProjects = (activeProjectsData?.projects ?? []).filter(p => p.status === 'IN_PROGRESS');
 
   // Fetch active referendums for banner
   const { data: activeReferendums } = useQuery<Array<{
@@ -585,6 +595,26 @@ export default function TownPage() {
               <span className="text-realm-text-muted text-xs">
                 — their blessings are weakened until {new Date(crisisOfFaithStatus.until!).toLocaleDateString()}
               </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Active Town Projects Banner */}
+      {activeProjects.length > 0 && (
+        <div className="bg-realm-gold-500/5 border-b border-realm-gold-500/20">
+          <div className="max-w-7xl mx-auto px-4 py-2 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-3 text-xs">
+              <Hammer className="w-3.5 h-3.5 text-realm-gold-400 flex-shrink-0" />
+              {activeProjects.map(p => {
+                const daysRemaining = Math.max(0, Math.ceil((new Date(p.completesAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
+                return (
+                  <span key={p.id} className="text-realm-text-secondary">
+                    Building: <span className="text-realm-gold-400">{p.config?.name ?? p.projectType}</span>
+                    <span className="text-realm-text-muted ml-1">({daysRemaining}d remaining)</span>
+                  </span>
+                );
+              })}
             </div>
           </div>
         </div>

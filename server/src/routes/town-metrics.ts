@@ -30,6 +30,7 @@ router.get('/:townId', async (req: Request, res: Response) => {
         description: METRIC_DESCRIPTIONS[metricType] ?? '',
         baseValue: m.baseValue,
         modifier: m.modifier,
+        projectModifier: m.projectModifier,
         effectiveValue: m.effectiveValue,
         lastUpdatedBy: m.lastUpdatedBy,
         isActive: ACTIVE_METRICS.includes(metricType),

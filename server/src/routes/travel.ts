@@ -19,6 +19,7 @@ import {
   partyMembers,
   parties,
   towns,
+  townPolicies,
 } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
@@ -54,6 +55,24 @@ function calculateEtaTicks(currentNodeIndex: number, nodeCount: number, directio
     ? nodeCount - currentNodeIndex
     : currentNodeIndex;
   return Math.max(0, Math.ceil(nodesRemaining / Math.max(1, speedModifier)));
+}
+
+/** Get road improvement speed bonus from tradePolicy for a specific route. */
+async function getRoadImprovementBonus(originTownId: string, routeId: string): Promise<number> {
+  const policy = await db.query.townPolicies.findFirst({
+    where: eq(townPolicies.townId, originTownId),
+    columns: { tradePolicy: true },
+  });
+  if (!policy) return 0;
+  const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+  const improvements = (tp.roadImprovements as any[]) ?? [];
+  let bonus = 0;
+  for (const imp of improvements) {
+    if (imp.routeId === routeId) {
+      bonus += imp.speedBonus ?? 0;
+    }
+  }
+  return bonus;
 }
 
 /** Determine the nearest town when cancelling travel. */
@@ -307,8 +326,9 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
           });
         }
 
-        // Group speed: use leader's feat bonus (character is party leader)
-        const groupSpeedMod = 1 + computeFeatBonus((character.feats as string[]) ?? [], 'travelSpeedBonus');
+        // Group speed: use leader's feat bonus + road improvements
+        const groupRoadBonus = await getRoadImprovementBonus(character.currentTownId!, routeId);
+        const groupSpeedMod = (1 + computeFeatBonus((character.feats as string[]) ?? [], 'travelSpeedBonus')) * (1 + groupRoadBonus);
 
         const [groupState] = await tx.insert(groupTravelStates).values({
           id: crypto.randomUUID(),
@@ -364,7 +384,8 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
     // ---- SOLO TRAVEL (no party) ----
     const weightState = await calculateWeightState(character.id);
 
-    const soloSpeedMod = 1 + computeFeatBonus((character.feats as string[]) ?? [], 'travelSpeedBonus');
+    const roadBonus = await getRoadImprovementBonus(character.currentTownId!, routeId);
+    const soloSpeedMod = (1 + computeFeatBonus((character.feats as string[]) ?? [], 'travelSpeedBonus')) * (1 + roadBonus);
 
     const travelState = await db.transaction(async (tx) => {
       const [state] = await tx.insert(characterTravelStates).values({

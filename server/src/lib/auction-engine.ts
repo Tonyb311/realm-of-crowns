@@ -5,7 +5,7 @@
 import crypto from 'crypto';
 import { db } from './db';
 import { eq, and, sql, desc, inArray, lte } from 'drizzle-orm';
-import { auctionCycles, marketListings, marketBuyOrders, characters, playerProfessions, inventories, tradeTransactions, priceHistories, townTreasuries, items, churchChapters } from '@database/tables';
+import { auctionCycles, marketListings, marketBuyOrders, characters, playerProfessions, inventories, tradeTransactions, priceHistories, townTreasuries, items, churchChapters, townPolicies } from '@database/tables';
 import { logger } from './logger';
 import {
   STANDARD_FEE_RATE,
@@ -424,6 +424,30 @@ export async function resolveAuctionCycle(townId: string): Promise<{
             if (foreignRebateGold > 0) {
               await tx.update(characters)
                 .set({ gold: sql`${characters.gold} + ${foreignRebateGold}` })
+                .where(eq(characters.id, winner.order.buyerId));
+            }
+          }
+        }
+
+        // Market stimulus bonus (emergency spending / trade fair project)
+        const townPolicy = await tx.query.townPolicies.findFirst({
+          where: eq(townPolicies.townId, townId),
+          columns: { tradePolicy: true },
+        });
+        const stimulusTp = (townPolicy?.tradePolicy as Record<string, any>) ?? {};
+        if (stimulusTp.marketStimulus && new Date(stimulusTp.marketStimulus.until) > new Date()) {
+          const stimulusBonus = stimulusTp.marketStimulus.bonus ?? 0;
+          if (stimulusBonus > 0) {
+            const sellerStimulusGold = Math.floor(sellerNet * stimulusBonus);
+            if (sellerStimulusGold > 0) {
+              await tx.update(characters)
+                .set({ gold: sql`${characters.gold} + ${sellerStimulusGold}` })
+                .where(eq(characters.id, listing.sellerId));
+            }
+            const buyerStimulusGold = Math.floor(bidPrice * stimulusBonus);
+            if (buyerStimulusGold > 0) {
+              await tx.update(characters)
+                .set({ gold: sql`${characters.gold} + ${buyerStimulusGold}` })
                 .where(eq(characters.id, winner.order.buyerId));
             }
           }

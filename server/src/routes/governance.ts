@@ -1,8 +1,8 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../lib/db';
-import { eq, and, or, desc, sql, count } from 'drizzle-orm';
-import { kingdoms, towns, laws, lawVotes, councilMembers, townPolicies, townTreasuries, wars, characters, townResources, buildings } from '@database/tables';
+import { eq, and, or, desc, sql, count, lte } from 'drizzle-orm';
+import { kingdoms, towns, laws, lawVotes, councilMembers, townPolicies, townTreasuries, wars, characters, townResources, buildings, townProjects, travelRoutes, townMetrics } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
@@ -11,6 +11,7 @@ import { emitGovernanceEvent } from '../socket/events';
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { logTownEvent } from '../services/history-logger';
+import { PROJECT_TYPES, EMERGENCY_SPENDING_TYPES, SHERIFF_PATROL_CONFIG, MAX_CONCURRENT_PROJECTS, MAX_EMERGENCY_PER_DAY, type ProjectType, type EmergencySpendingType } from '@shared/data/town-projects-config';
 import crypto from 'crypto';
 
 const router = Router();
@@ -370,7 +371,7 @@ router.get('/town-info/:townId', authGuard, characterGuard, requireTown, async (
         })),
         buildingCapacity: {
           used: usedSlots,
-          total: Math.max(20, Math.floor(townRow.population / 100)),
+          total: Math.max(20, Math.floor(townRow.population / 100)) + ((policy?.tradePolicy as any)?.buildingCapacityBonus ?? 0),
         },
       },
     });
@@ -792,6 +793,447 @@ router.get('/kingdom/:kingdomId', authGuard, characterGuard, requireTown, async 
   } catch (error) {
     if (handleDbError(error, res, 'governance-kingdom-info', req)) return;
     logRouteError(req, 500, 'Kingdom info error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// =============================================================================
+// TOWN PROJECTS
+// =============================================================================
+
+const commissionProjectSchema = z.object({
+  townId: z.string().min(1),
+  projectType: z.string().min(1),
+  targetRouteId: z.string().optional(),
+});
+
+const cancelProjectSchema = z.object({
+  projectId: z.string().min(1),
+});
+
+const emergencySpendingSchema = z.object({
+  townId: z.string().min(1),
+  spendingType: z.string().min(1),
+  targetMetric: z.string().optional(),
+});
+
+const sheriffPatrolSchema = z.object({
+  townId: z.string().min(1),
+  routeId: z.string().min(1),
+});
+
+const setSheriffBudgetSchema = z.object({
+  townId: z.string().min(1),
+  budget: z.number().int().min(SHERIFF_PATROL_CONFIG.minDailyBudget).max(SHERIFF_PATROL_CONFIG.maxDailyBudget),
+});
+
+// POST /commission-project — Mayor commissions a town project
+router.post('/commission-project', authGuard, characterGuard, requireTown, validate(commissionProjectSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId, projectType, targetRouteId } = req.body;
+    const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling.' });
+    }
+
+    // Verify project type
+    const config = PROJECT_TYPES[projectType as ProjectType];
+    if (!config) {
+      return res.status(400).json({ error: 'Invalid project type' });
+    }
+
+    // Verify mayor
+    const town = await db.query.towns.findFirst({
+      where: eq(towns.id, townId),
+      with: { townTreasuries: true },
+    });
+    if (!town) return res.status(404).json({ error: 'Town not found' });
+    if (town.mayorId !== character.id) {
+      return res.status(403).json({ error: 'Only the mayor can commission projects' });
+    }
+
+    // Count active projects
+    const activeProjects = await db.select({ cnt: count() })
+      .from(townProjects)
+      .where(and(eq(townProjects.townId, townId), eq(townProjects.status, 'IN_PROGRESS')));
+    if ((activeProjects[0]?.cnt ?? 0) >= MAX_CONCURRENT_PROJECTS) {
+      return res.status(400).json({ error: `Maximum ${MAX_CONCURRENT_PROJECTS} concurrent projects allowed` });
+    }
+
+    // Verify route if needed
+    if ('requiresRouteSelection' in config && config.requiresRouteSelection) {
+      if (!targetRouteId) {
+        return res.status(400).json({ error: 'This project requires a route selection' });
+      }
+      const route = await db.query.travelRoutes.findFirst({
+        where: and(
+          eq(travelRoutes.id, targetRouteId),
+          or(eq(travelRoutes.fromTownId, townId), eq(travelRoutes.toTownId, townId)),
+        ),
+      });
+      if (!route) {
+        return res.status(400).json({ error: 'Route must be adjacent to this town' });
+      }
+    }
+
+    // Verify treasury
+    const treasury = town.townTreasuries[0];
+    const balance = treasury?.balance ?? 0;
+    if (balance < config.cost) {
+      return res.status(400).json({ error: `Insufficient treasury. Need ${config.cost}g, have ${balance}g` });
+    }
+
+    // Transaction: deduct cost + create project
+    const now = new Date();
+    const completesAt = new Date(now.getTime() + config.durationTicks * 24 * 60 * 60 * 1000);
+
+    const [project] = await db.transaction(async (tx) => {
+      await tx.update(townTreasuries)
+        .set({ balance: sql`${townTreasuries.balance} - ${config.cost}` })
+        .where(eq(townTreasuries.townId, townId));
+
+      return tx.insert(townProjects).values({
+        id: crypto.randomUUID(),
+        townId,
+        projectType,
+        status: 'IN_PROGRESS',
+        commissionedById: character.id,
+        cost: config.cost,
+        startedAt: now.toISOString(),
+        completesAt: completesAt.toISOString(),
+        targetRouteId: targetRouteId ?? null,
+        metadata: config.effect as any,
+      }).returning();
+    });
+
+    logTownEvent(townId, 'GOVERNANCE', `Project Commissioned: ${config.name}`, `Mayor ${character.name} commissioned ${config.name} for ${config.cost}g`, character.id).catch(() => {});
+
+    return res.status(201).json({ project, config });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-commission-project', req)) return;
+    logRouteError(req, 500, 'Commission project error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /cancel-project — Mayor cancels a project (no refund)
+router.post('/cancel-project', authGuard, characterGuard, requireTown, validate(cancelProjectSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { projectId } = req.body;
+    const character = req.character!;
+
+    const project = await db.query.townProjects.findFirst({
+      where: eq(townProjects.id, projectId),
+      with: { town: { columns: { id: true, mayorId: true } } },
+    });
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (project.town.mayorId !== character.id) {
+      return res.status(403).json({ error: 'Only the mayor can cancel projects' });
+    }
+    if (project.status !== 'IN_PROGRESS') {
+      return res.status(400).json({ error: 'Only in-progress projects can be cancelled' });
+    }
+
+    await db.update(townProjects)
+      .set({ status: 'CANCELLED' })
+      .where(eq(townProjects.id, projectId));
+
+    const config = PROJECT_TYPES[project.projectType as ProjectType];
+    logTownEvent(project.townId, 'GOVERNANCE', `Project Cancelled: ${config?.name ?? project.projectType}`, `Mayor ${character.name} cancelled the project. No refund.`, character.id).catch(() => {});
+
+    return res.json({ message: 'Project cancelled', projectId });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-cancel-project', req)) return;
+    logRouteError(req, 500, 'Cancel project error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /projects/:townId — View town projects
+router.get('/projects/:townId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId } = req.params;
+    const projects = await db.query.townProjects.findMany({
+      where: eq(townProjects.townId, townId),
+      with: {
+        commissionedBy: { columns: { id: true, name: true } },
+        targetRoute: { columns: { id: true, name: true, fromTownId: true, toTownId: true } },
+      },
+      orderBy: [desc(townProjects.startedAt)],
+    });
+
+    return res.json({
+      projects: projects.map(p => ({
+        ...p,
+        config: PROJECT_TYPES[p.projectType as ProjectType] ?? null,
+      })),
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-projects', req)) return;
+    logRouteError(req, 500, 'Get projects error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// =============================================================================
+// EMERGENCY SPENDING
+// =============================================================================
+
+// POST /emergency-spending — Mayor instant action
+router.post('/emergency-spending', authGuard, characterGuard, requireTown, validate(emergencySpendingSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId, spendingType, targetMetric } = req.body;
+    const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling.' });
+    }
+
+    const config = EMERGENCY_SPENDING_TYPES[spendingType as EmergencySpendingType];
+    if (!config) {
+      return res.status(400).json({ error: 'Invalid spending type' });
+    }
+
+    // Verify mayor
+    const town = await db.query.towns.findFirst({
+      where: eq(towns.id, townId),
+      with: { townTreasuries: true },
+    });
+    if (!town) return res.status(404).json({ error: 'Town not found' });
+    if (town.mayorId !== character.id) {
+      return res.status(403).json({ error: 'Only the mayor can use emergency spending' });
+    }
+
+    // Check daily limit
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+    });
+    const tp = (policy?.tradePolicy as Record<string, any>) ?? {};
+    const lastEmergency = tp.lastEmergencySpendingAt;
+    if (lastEmergency) {
+      const lastDate = new Date(lastEmergency).toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      if (lastDate === today) {
+        return res.status(400).json({ error: 'Emergency spending already used today (max 1/day)' });
+      }
+    }
+
+    // Verify treasury
+    const treasury = town.townTreasuries[0];
+    const balance = treasury?.balance ?? 0;
+    if (balance < config.cost) {
+      return res.status(400).json({ error: `Insufficient treasury. Need ${config.cost}g, have ${balance}g` });
+    }
+
+    // Require metric for EMERGENCY_REPAIRS
+    if (spendingType === 'EMERGENCY_REPAIRS' && !targetMetric) {
+      return res.status(400).json({ error: 'Emergency repairs require a target metric' });
+    }
+
+    // Deduct cost
+    await db.update(townTreasuries)
+      .set({ balance: sql`${townTreasuries.balance} - ${config.cost}` })
+      .where(eq(townTreasuries.townId, townId));
+
+    // Track daily usage
+    const updatedTp: Record<string, any> = { ...tp, lastEmergencySpendingAt: new Date().toISOString() };
+
+    // Apply effect
+    let effectDescription = '';
+    if (spendingType === 'EMERGENCY_REPAIRS') {
+      // +3 to selected metric's projectModifier
+      await db.update(townMetrics)
+        .set({
+          projectModifier: sql`${townMetrics.projectModifier} + 3`,
+          effectiveValue: sql`LEAST(100, GREATEST(0, ${townMetrics.baseValue} + ${townMetrics.modifier} + ${townMetrics.projectModifier} + 3))`,
+          lastUpdatedBy: 'EMERGENCY',
+        })
+        .where(and(eq(townMetrics.townId, townId), eq(townMetrics.metricType, targetMetric!)));
+      effectDescription = `+3 to ${targetMetric}`;
+    } else if (spendingType === 'BONUS_GUARD_SHIFT') {
+      const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+      const activePatrols = (updatedTp.activePatrols as any[] ?? []);
+      activePatrols.push({
+        routeId: 'ALL_ADJACENT',
+        expiresAt,
+        dangerReduction: 0.10,
+        source: 'GUARD_SHIFT',
+      });
+      updatedTp.activePatrols = activePatrols;
+      effectDescription = '-10% road danger on all adjacent routes for 3 days';
+    } else if (spendingType === 'MARKET_STIMULUS') {
+      const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+      updatedTp.marketStimulus = { until: expiresAt, bonus: 0.05 };
+      effectDescription = '+5% market bonus for 3 days';
+    }
+
+    await db.update(townPolicies)
+      .set({ tradePolicy: updatedTp })
+      .where(eq(townPolicies.townId, townId));
+
+    logTownEvent(townId, 'GOVERNANCE', `Emergency Spending: ${config.name}`, `Mayor ${character.name} spent ${config.cost}g on ${config.name}. ${effectDescription}`, character.id).catch(() => {});
+
+    return res.json({ message: `${config.name} applied`, effect: effectDescription, cost: config.cost });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-emergency-spending', req)) return;
+    logRouteError(req, 500, 'Emergency spending error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// =============================================================================
+// SHERIFF PATROLS
+// =============================================================================
+
+// POST /sheriff-patrol — Sheriff deploys emergency road patrol
+router.post('/sheriff-patrol', authGuard, characterGuard, requireTown, validate(sheriffPatrolSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId, routeId } = req.body;
+    const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling.' });
+    }
+
+    // Verify sheriff
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+    });
+    if (!policy || policy.sheriffId !== character.id) {
+      return res.status(403).json({ error: 'Only the appointed sheriff can deploy patrols' });
+    }
+
+    // Verify route is adjacent
+    const route = await db.query.travelRoutes.findFirst({
+      where: and(
+        eq(travelRoutes.id, routeId),
+        or(eq(travelRoutes.fromTownId, townId), eq(travelRoutes.toTownId, townId)),
+      ),
+    });
+    if (!route) {
+      return res.status(400).json({ error: 'Route must be adjacent to this town' });
+    }
+
+    // Calculate cost from route's nodeCount
+    const cost = route.nodeCount * SHERIFF_PATROL_CONFIG.costPerNode;
+
+    // Check budget
+    if (policy.sheriffBudgetUsedToday + cost > policy.sheriffDailyBudget) {
+      return res.status(400).json({
+        error: `Insufficient budget. Need ${cost}g, remaining: ${policy.sheriffDailyBudget - policy.sheriffBudgetUsedToday}g`,
+      });
+    }
+
+    // Check max active patrols
+    const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+    const now = new Date().toISOString();
+    const activePatrols = ((tp.activePatrols as any[]) ?? []).filter(
+      (p: any) => p.source === 'SHERIFF' && new Date(p.expiresAt) > new Date(now)
+    );
+    if (activePatrols.length >= SHERIFF_PATROL_CONFIG.maxActivePatrols) {
+      return res.status(400).json({ error: `Maximum ${SHERIFF_PATROL_CONFIG.maxActivePatrols} active sheriff patrols allowed` });
+    }
+
+    // Verify treasury has funds
+    const treasury = await db.query.townTreasuries.findFirst({
+      where: eq(townTreasuries.townId, townId),
+    });
+    if (!treasury || treasury.balance < cost) {
+      return res.status(400).json({ error: `Insufficient town treasury. Need ${cost}g` });
+    }
+
+    // Apply: deduct budget, deduct treasury, store patrol
+    const expiresAt = new Date(Date.now() + SHERIFF_PATROL_CONFIG.durationDays * 24 * 60 * 60 * 1000).toISOString();
+    const allPatrols = (tp.activePatrols as any[] ?? []);
+    allPatrols.push({
+      routeId,
+      expiresAt,
+      dangerReduction: SHERIFF_PATROL_CONFIG.dangerReduction,
+      source: 'SHERIFF',
+    });
+
+    await db.transaction(async (tx) => {
+      await tx.update(townPolicies)
+        .set({
+          sheriffBudgetUsedToday: sql`${townPolicies.sheriffBudgetUsedToday} + ${cost}`,
+          tradePolicy: { ...tp, activePatrols: allPatrols },
+        })
+        .where(eq(townPolicies.townId, townId));
+
+      await tx.update(townTreasuries)
+        .set({ balance: sql`${townTreasuries.balance} - ${cost}` })
+        .where(eq(townTreasuries.townId, townId));
+    });
+
+    logTownEvent(townId, 'GOVERNANCE', `Sheriff Patrol Deployed`, `Sheriff ${character.name} deployed a patrol on ${route.name || 'route'} for ${cost}g (${SHERIFF_PATROL_CONFIG.durationDays} days)`, character.id).catch(() => {});
+
+    return res.json({
+      message: 'Patrol deployed',
+      patrol: { routeId, routeName: route.name, cost, expiresAt, dangerReduction: SHERIFF_PATROL_CONFIG.dangerReduction },
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-sheriff-patrol', req)) return;
+    logRouteError(req, 500, 'Sheriff patrol error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /set-sheriff-budget — Mayor sets sheriff daily budget
+router.post('/set-sheriff-budget', authGuard, characterGuard, requireTown, validate(setSheriffBudgetSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId, budget } = req.body;
+    const character = req.character!;
+
+    const town = await db.query.towns.findFirst({ where: eq(towns.id, townId) });
+    if (!town) return res.status(404).json({ error: 'Town not found' });
+    if (town.mayorId !== character.id) {
+      return res.status(403).json({ error: 'Only the mayor can set the sheriff budget' });
+    }
+
+    await db.update(townPolicies)
+      .set({ sheriffDailyBudget: budget })
+      .where(eq(townPolicies.townId, townId));
+
+    return res.json({ message: `Sheriff daily budget set to ${budget}g`, budget });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-set-sheriff-budget', req)) return;
+    logRouteError(req, 500, 'Set sheriff budget error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /sheriff-status/:townId — View sheriff info + active patrols
+router.get('/sheriff-status/:townId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId } = req.params;
+
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+      with: {
+        character: { columns: { id: true, name: true } }, // sheriff
+      },
+    });
+
+    if (!policy) {
+      return res.json({ sheriff: null, budget: 0, budgetUsed: 0, patrols: [] });
+    }
+
+    const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+    const now = new Date();
+    const activePatrols = ((tp.activePatrols as any[]) ?? []).filter(
+      (p: any) => new Date(p.expiresAt) > now
+    );
+
+    return res.json({
+      sheriff: policy.character ?? null,
+      budget: policy.sheriffDailyBudget,
+      budgetUsed: policy.sheriffBudgetUsedToday,
+      patrols: activePatrols,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-sheriff-status', req)) return;
+    logRouteError(req, 500, 'Sheriff status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

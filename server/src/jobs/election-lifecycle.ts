@@ -411,6 +411,20 @@ async function transitionVotingToCompleted(io: Server, martialLawTowns: Set<stri
           .set({ mayorId: winnerId })
           .where(eq(towns.id, election.townId));
         console.log(`[ElectionLifecycle] ${winnerName} appointed as mayor of "${election.town?.name}"`);
+
+        // Clear sheriff on new mayor — new mayor appoints their own
+        const oldPolicy = await db.query.townPolicies.findFirst({
+          where: eq(townPolicies.townId, election.townId),
+          with: { character: { columns: { name: true } } },
+        });
+        if (oldPolicy?.sheriffId) {
+          const oldSheriffName = oldPolicy.character?.name ?? 'Unknown';
+          await db.update(townPolicies)
+            .set({ sheriffId: null, sheriffBudgetUsedToday: 0 })
+            .where(eq(townPolicies.townId, election.townId));
+          console.log(`[ElectionLifecycle] Sheriff ${oldSheriffName} removed — new mayor ${winnerName} elected in "${election.town?.name}"`);
+          logTownEvent(election.townId, 'GOVERNANCE', `Sheriff Removed`, `Sheriff ${oldSheriffName} was removed after ${winnerName} was elected mayor.`, winnerId).catch(() => {});
+        }
       } else if (election.type === 'RULER' && election.kingdomId) {
         await db.update(kingdoms)
           .set({ rulerId: winnerId })

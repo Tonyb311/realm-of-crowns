@@ -19,6 +19,12 @@ import {
   Heart,
   TrendingUp,
   Activity,
+  Hammer,
+  Zap,
+  Route,
+  Clock,
+  Check,
+  X,
 } from 'lucide-react';
 import api from '../services/api';
 import GoldAmount from '../components/shared/GoldAmount';
@@ -27,6 +33,7 @@ import { RealmModal } from '../components/ui/RealmModal';
 import { PageHeader } from '../components/ui/realm-index';
 import { buildingTypeLabel } from '@shared/data/building-labels';
 import { METRIC_LABELS, type TownMetricType } from '@shared/data/town-metrics-config';
+import { PROJECT_TYPES, EMERGENCY_SPENDING_TYPES, SHERIFF_PATROL_CONFIG, PROJECT_CATEGORIES, type ProjectType, type EmergencySpendingType } from '@shared/data/town-projects-config';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -131,9 +138,39 @@ interface TownMetric {
   description: string;
   baseValue: number;
   modifier: number;
+  projectModifier: number;
   effectiveValue: number;
   lastUpdatedBy: string | null;
   isActive: boolean;
+}
+
+interface TownProject {
+  id: string;
+  townId: string;
+  projectType: string;
+  status: string;
+  commissionedBy: { id: string; name: string } | null;
+  targetRoute: { id: string; name: string; fromTownId: string; toTownId: string } | null;
+  cost: number;
+  startedAt: string;
+  completesAt: string;
+  completedAt: string | null;
+  config: typeof PROJECT_TYPES[ProjectType] | null;
+}
+
+interface AdjacentRoute {
+  id: string;
+  name: string;
+  fromTownId: string;
+  toTownId: string;
+  nodeCount: number;
+}
+
+interface SheriffStatus {
+  sheriff: { id: string; name: string } | null;
+  budget: number;
+  budgetUsed: number;
+  patrols: { routeId: string; expiresAt: string; dangerReduction: number; source: string }[];
 }
 
 // ---------------------------------------------------------------------------
@@ -241,6 +278,89 @@ export default function TownHallPage() {
     enabled: !!townId,
   });
 
+  // Town projects
+  const { data: projectsData } = useQuery<{ projects: TownProject[] }>({
+    queryKey: ['governance', 'projects', townId],
+    queryFn: async () => (await api.get(`/governance/projects/${townId}`)).data,
+    enabled: !!townId,
+  });
+
+  // Adjacent routes (for project/patrol route selection)
+  const { data: routesData } = useQuery<{ routes: AdjacentRoute[] }>({
+    queryKey: ['travel', 'routes', townId],
+    queryFn: async () => (await api.get('/travel/routes')).data,
+    enabled: !!townId,
+  });
+
+  // Sheriff status
+  const { data: sheriffData } = useQuery<SheriffStatus>({
+    queryKey: ['governance', 'sheriff-status', townId],
+    queryFn: async () => (await api.get(`/governance/sheriff-status/${townId}`)).data,
+    enabled: !!townId,
+  });
+
+  // Project commission modal state
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [selectedProjectType, setSelectedProjectType] = useState<string | null>(null);
+  const [selectedRouteId, setSelectedRouteId] = useState<string>('');
+
+  const commissionMutation = useMutation({
+    mutationFn: async (data: { townId: string; projectType: string; targetRouteId?: string }) => {
+      return (await api.post('/governance/commission-project', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['governance', 'projects'] });
+      queryClient.invalidateQueries({ queryKey: ['governance', 'town-info'] });
+      setShowProjectModal(false);
+      setSelectedProjectType(null);
+      setSelectedRouteId('');
+    },
+  });
+
+  const cancelProjectMutation = useMutation({
+    mutationFn: async (projectId: string) => {
+      return (await api.post('/governance/cancel-project', { projectId })).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['governance', 'projects'] });
+    },
+  });
+
+  // Emergency spending
+  const [emergencyMetric, setEmergencyMetric] = useState<string>('');
+  const emergencyMutation = useMutation({
+    mutationFn: async (data: { townId: string; spendingType: string; targetMetric?: string }) => {
+      return (await api.post('/governance/emergency-spending', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['governance', 'town-info'] });
+      queryClient.invalidateQueries({ queryKey: ['town-metrics'] });
+    },
+  });
+
+  // Sheriff patrol
+  const [patrolRouteId, setPatrolRouteId] = useState<string>('');
+  const patrolMutation = useMutation({
+    mutationFn: async (data: { townId: string; routeId: string }) => {
+      return (await api.post('/governance/sheriff-patrol', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['governance', 'sheriff-status'] });
+      queryClient.invalidateQueries({ queryKey: ['governance', 'town-info'] });
+    },
+  });
+
+  // Sheriff budget
+  const [budgetValue, setBudgetValue] = useState<number>(SHERIFF_PATROL_CONFIG.defaultDailyBudget);
+  const setBudgetMutation = useMutation({
+    mutationFn: async (data: { townId: string; budget: number }) => {
+      return (await api.post('/governance/set-sheriff-budget', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['governance', 'sheriff-status'] });
+    },
+  });
+
   // -------------------------------------------------------------------------
   // Relocation mutations
   // -------------------------------------------------------------------------
@@ -313,6 +433,10 @@ export default function TownHallPage() {
   const town = townData?.town;
   const elections = electionsData?.elections ?? [];
   const isMayor = town?.mayor?.id === character.id;
+  const isSheriff = town?.policy?.sheriffId === character.id;
+  const activeProjects = (projectsData?.projects ?? []).filter(p => p.status === 'IN_PROGRESS');
+  const recentCompleted = (projectsData?.projects ?? []).filter(p => p.status === 'COMPLETED').slice(0, 5);
+  const adjacentRoutes = (routesData?.routes ?? []) as AdjacentRoute[];
 
   // -------------------------------------------------------------------------
   // Render
@@ -637,9 +761,11 @@ export default function TownHallPage() {
                               style={{ width: `${m.effectiveValue}%` }}
                             />
                           </div>
-                          {!isComingSoon && m.modifier !== 0 && (
+                          {!isComingSoon && (m.modifier !== 0 || m.projectModifier !== 0) && (
                             <p className="text-[10px] text-realm-text-muted mt-0.5">
-                              Base: {m.baseValue} {m.modifier > 0 ? '+' : ''}{m.modifier} ({m.lastUpdatedBy ?? 'Unknown'})
+                              Base: {m.baseValue}
+                              {m.modifier !== 0 && <> {m.modifier > 0 ? '+' : ''}{m.modifier} (Religion)</>}
+                              {m.projectModifier !== 0 && <> {m.projectModifier > 0 ? '+' : ''}{m.projectModifier} (Projects)</>}
                             </p>
                           )}
                         </div>
@@ -832,6 +958,247 @@ export default function TownHallPage() {
                           Load More ({citizensData.totalCount - citizenPage * citizensData.limit} remaining)
                         </button>
                       )}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* ============================================================ */}
+              {/* Town Projects */}
+              {/* ============================================================ */}
+              <section>
+                <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
+                  <Hammer className="w-5 h-5 text-realm-gold-400" />
+                  Town Projects
+                </h2>
+                <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 space-y-4">
+                  {/* Active Projects */}
+                  {activeProjects.length > 0 ? (
+                    <div className="space-y-3">
+                      {activeProjects.map(p => {
+                        const now = Date.now();
+                        const start = new Date(p.startedAt).getTime();
+                        const end = new Date(p.completesAt).getTime();
+                        const progress = Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+                        const daysRemaining = Math.max(0, Math.ceil((end - now) / (24 * 60 * 60 * 1000)));
+                        return (
+                          <div key={p.id} className="bg-realm-bg-800 rounded-sm p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <div>
+                                <span className="text-sm font-semibold text-realm-text-primary">{p.config?.name ?? p.projectType}</span>
+                                <span className="text-[10px] text-realm-text-muted ml-2">by {p.commissionedBy?.name ?? 'Unknown'}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-realm-text-muted flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {daysRemaining}d remaining
+                                </span>
+                                {isMayor && (
+                                  <button
+                                    onClick={() => cancelProjectMutation.mutate(p.id)}
+                                    disabled={cancelProjectMutation.isPending}
+                                    className="text-[10px] text-realm-danger hover:text-realm-danger/80"
+                                    title="Cancel (no refund)"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-[10px] text-realm-text-muted mb-2">{p.config?.description}</p>
+                            <div className="w-full h-1.5 bg-realm-bg-900 rounded-full overflow-hidden">
+                              <div className="h-full bg-realm-gold-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-realm-text-muted text-sm">No active projects.</p>
+                  )}
+
+                  {/* Recent Completed */}
+                  {recentCompleted.length > 0 && (
+                    <div>
+                      <p className="text-realm-text-muted text-xs mb-2">Recently Completed</p>
+                      {recentCompleted.map(p => (
+                        <div key={p.id} className="flex items-center gap-2 py-1">
+                          <Check className="w-3 h-3 text-realm-success" />
+                          <span className="text-xs text-realm-text-secondary">{p.config?.name ?? p.projectType}</span>
+                          <span className="text-[10px] text-realm-text-muted">({p.config?.cost}g)</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Commission Button (mayor only) */}
+                  {isMayor && (
+                    <button
+                      onClick={() => setShowProjectModal(true)}
+                      disabled={activeProjects.length >= 2}
+                      className="w-full py-2.5 bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400 font-display text-sm rounded-sm hover:bg-realm-gold-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {activeProjects.length >= 2 ? 'Max 2 Concurrent Projects' : 'Commission Project'}
+                    </button>
+                  )}
+                </div>
+              </section>
+
+              {/* ============================================================ */}
+              {/* Emergency Spending (mayor only) */}
+              {/* ============================================================ */}
+              {isMayor && (
+                <section>
+                  <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-realm-gold-400" />
+                    Emergency Spending
+                  </h2>
+                  <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 space-y-3">
+                    {(Object.entries(EMERGENCY_SPENDING_TYPES) as [EmergencySpendingType, typeof EMERGENCY_SPENDING_TYPES[EmergencySpendingType]][]).map(([key, config]) => {
+                      const needsMetric = 'requiresMetricSelection' in config && config.requiresMetricSelection;
+                      return (
+                        <div key={key} className="bg-realm-bg-800 rounded-sm p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-semibold text-realm-text-primary">{config.name}</span>
+                            <GoldAmount amount={config.cost} className="text-xs text-realm-gold-400" />
+                          </div>
+                          <p className="text-[10px] text-realm-text-muted mb-2">{config.description}</p>
+                          {needsMetric && (
+                            <select
+                              value={emergencyMetric}
+                              onChange={e => setEmergencyMetric(e.target.value)}
+                              className="w-full mb-2 px-2 py-1 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary"
+                            >
+                              <option value="">Select metric...</option>
+                              {['DEFENSES', 'PUBLIC_HEALTH', 'LAW_ENFORCEMENT', 'MARKET_EFFICIENCY'].map(m => (
+                                <option key={m} value={m}>{METRIC_LABELS[m as TownMetricType] ?? m}</option>
+                              ))}
+                            </select>
+                          )}
+                          <button
+                            onClick={() => emergencyMutation.mutate({
+                              townId: townId!,
+                              spendingType: key,
+                              ...(needsMetric && emergencyMetric ? { targetMetric: emergencyMetric } : {}),
+                            })}
+                            disabled={emergencyMutation.isPending || (needsMetric && !emergencyMetric) || (town?.treasury ?? 0) < config.cost}
+                            className="w-full py-1.5 text-xs bg-realm-danger/10 border border-realm-danger/30 text-realm-danger font-display rounded-sm hover:bg-realm-danger/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            Spend Now
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {emergencyMutation.isSuccess && (
+                      <p className="text-xs text-realm-success">Emergency spending applied!</p>
+                    )}
+                    {emergencyMutation.isError && (
+                      <p className="text-xs text-realm-danger">{(emergencyMutation.error as any)?.response?.data?.error ?? 'Failed'}</p>
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {/* ============================================================ */}
+              {/* Sheriff & Patrols */}
+              {/* ============================================================ */}
+              <section>
+                <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
+                  <Route className="w-5 h-5 text-realm-gold-400" />
+                  Sheriff Patrols
+                </h2>
+                <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 space-y-4">
+                  {sheriffData?.sheriff ? (
+                    <div className="grid grid-cols-3 gap-3 text-sm">
+                      <div className="bg-realm-bg-800 rounded-sm p-2 text-center">
+                        <p className="text-[10px] text-realm-text-muted">Sheriff</p>
+                        <p className="text-xs text-realm-text-primary font-semibold truncate">{sheriffData.sheriff.name}</p>
+                      </div>
+                      <div className="bg-realm-bg-800 rounded-sm p-2 text-center">
+                        <p className="text-[10px] text-realm-text-muted">Daily Budget</p>
+                        <p className="text-xs text-realm-gold-400 font-semibold">{sheriffData.budget}g</p>
+                      </div>
+                      <div className="bg-realm-bg-800 rounded-sm p-2 text-center">
+                        <p className="text-[10px] text-realm-text-muted">Used Today</p>
+                        <p className="text-xs text-realm-text-secondary font-semibold">{sheriffData.budgetUsed}g</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-realm-text-muted text-sm">No sheriff appointed.</p>
+                  )}
+
+                  {/* Active Patrols */}
+                  {sheriffData?.patrols && sheriffData.patrols.length > 0 && (
+                    <div>
+                      <p className="text-realm-text-muted text-xs mb-2">Active Patrols</p>
+                      {sheriffData.patrols.map((p, i) => (
+                        <div key={i} className="flex items-center justify-between py-1.5 text-xs">
+                          <span className="text-realm-text-secondary">
+                            <Route className="w-3 h-3 inline mr-1" />
+                            Route: {p.routeId === 'ALL_ADJACENT' ? 'All Adjacent' : p.routeId.slice(0, 8) + '...'}
+                          </span>
+                          <span className="text-realm-text-muted">
+                            -{(p.dangerReduction * 100).toFixed(0)}% danger
+                            <span className="ml-2">
+                              expires {new Date(p.expiresAt).toLocaleDateString()}
+                            </span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Sheriff: Deploy Patrol */}
+                  {isSheriff && townId && (
+                    <div className="border-t border-realm-border pt-3">
+                      <p className="text-xs text-realm-text-muted mb-2">Deploy Patrol</p>
+                      <select
+                        value={patrolRouteId}
+                        onChange={e => setPatrolRouteId(e.target.value)}
+                        className="w-full mb-2 px-2 py-1.5 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary"
+                      >
+                        <option value="">Select route...</option>
+                        {adjacentRoutes.map(r => (
+                          <option key={r.id} value={r.id}>
+                            {r.name || `Route ${r.id.slice(0, 8)}`} ({r.nodeCount} nodes, {r.nodeCount * SHERIFF_PATROL_CONFIG.costPerNode}g)
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => patrolMutation.mutate({ townId, routeId: patrolRouteId })}
+                        disabled={!patrolRouteId || patrolMutation.isPending}
+                        className="w-full py-2 text-xs bg-realm-teal-300/10 border border-realm-teal-300/30 text-realm-teal-300 font-display rounded-sm hover:bg-realm-teal-300/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Deploy Patrol
+                      </button>
+                      {patrolMutation.isError && (
+                        <p className="text-xs text-realm-danger mt-1">{(patrolMutation.error as any)?.response?.data?.error ?? 'Failed'}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Mayor: Set Sheriff Budget */}
+                  {isMayor && sheriffData?.sheriff && townId && (
+                    <div className="border-t border-realm-border pt-3">
+                      <p className="text-xs text-realm-text-muted mb-2">Set Sheriff Daily Budget</p>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min={SHERIFF_PATROL_CONFIG.minDailyBudget}
+                          max={SHERIFF_PATROL_CONFIG.maxDailyBudget}
+                          value={budgetValue}
+                          onChange={e => setBudgetValue(Number(e.target.value))}
+                          className="flex-1"
+                        />
+                        <span className="text-xs text-realm-gold-400 w-10 text-right">{budgetValue}g</span>
+                        <button
+                          onClick={() => setBudgetMutation.mutate({ townId, budget: budgetValue })}
+                          disabled={setBudgetMutation.isPending}
+                          className="px-3 py-1 text-[10px] bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400 rounded-sm hover:bg-realm-gold-500/20 transition-colors disabled:opacity-40"
+                        >
+                          Set
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1059,6 +1426,101 @@ export default function TownHallPage() {
             </div>
           </div>
         )}
+      </RealmModal>
+
+      {/* Commission Project Modal */}
+      <RealmModal
+        isOpen={showProjectModal}
+        onClose={() => { setShowProjectModal(false); setSelectedProjectType(null); setSelectedRouteId(''); }}
+        title="Commission Project"
+      >
+        <div className="space-y-4">
+          {PROJECT_CATEGORIES.map(cat => {
+            const typeEntries = Object.entries(PROJECT_TYPES).filter(([, v]) => v.category === cat);
+            if (typeEntries.length === 0) return null;
+            return (
+              <div key={cat}>
+                <p className="text-xs text-realm-text-muted font-display mb-2">{cat}</p>
+                <div className="space-y-2">
+                  {typeEntries.map(([key, config]) => {
+                    const isSelected = selectedProjectType === key;
+                    const needsRoute = 'requiresRouteSelection' in config && config.requiresRouteSelection;
+                    return (
+                      <div
+                        key={key}
+                        className={`bg-realm-bg-800 rounded-sm p-3 cursor-pointer border transition-colors ${
+                          isSelected ? 'border-realm-gold-500/60' : 'border-realm-border hover:border-realm-text-muted/40'
+                        }`}
+                        onClick={() => { setSelectedProjectType(key); setSelectedRouteId(''); }}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-semibold text-realm-text-primary">{config.name}</span>
+                          <div className="flex items-center gap-3 text-xs text-realm-text-muted">
+                            <span>{config.durationTicks} day{config.durationTicks > 1 ? 's' : ''}</span>
+                            <GoldAmount amount={config.cost} className="text-realm-gold-400" />
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-realm-text-muted">{config.description}</p>
+
+                        {isSelected && needsRoute && (
+                          <select
+                            value={selectedRouteId}
+                            onChange={e => { e.stopPropagation(); setSelectedRouteId(e.target.value); }}
+                            onClick={e => e.stopPropagation()}
+                            className="w-full mt-2 px-2 py-1.5 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary"
+                          >
+                            <option value="">Select route...</option>
+                            {adjacentRoutes.map(r => (
+                              <option key={r.id} value={r.id}>
+                                {r.name || `Route ${r.id.slice(0, 8)}`}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+
+          {commissionMutation.isError && (
+            <p className="text-xs text-realm-danger">{(commissionMutation.error as any)?.response?.data?.error ?? 'Failed to commission project'}</p>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => { setShowProjectModal(false); setSelectedProjectType(null); }}
+              className="flex-1 px-4 py-2.5 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-600 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                if (!selectedProjectType || !townId) return;
+                const config = PROJECT_TYPES[selectedProjectType as ProjectType];
+                commissionMutation.mutate({
+                  townId,
+                  projectType: selectedProjectType,
+                  ...(config && 'requiresRouteSelection' in config && config.requiresRouteSelection && selectedRouteId ? { targetRouteId: selectedRouteId } : {}),
+                });
+              }}
+              disabled={
+                !selectedProjectType ||
+                commissionMutation.isPending ||
+                (() => { const c = PROJECT_TYPES[selectedProjectType as ProjectType]; return c && 'requiresRouteSelection' in c && c.requiresRouteSelection && !selectedRouteId; })()
+              }
+              className="flex-1 px-4 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {commissionMutation.isPending ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Commissioning...</>
+              ) : (
+                'Commission'
+              )}
+            </button>
+          </div>
+        </div>
       </RealmModal>
     </div>
   );

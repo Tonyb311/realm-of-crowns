@@ -13,8 +13,9 @@ import {
   laws, townTreasuries, townPolicies, tradeTransactions, caravans,
   elections, electionVotes, electionCandidates, impeachments, towns, kingdoms,
   worldEvents, combatEncounterLogs, notifications, recipes,
-  ownedAssets, livestock, jobs, houses, houseStorage, noticeBoardPosts, churchChapters, gods, townMetrics,
+  ownedAssets, livestock, jobs, houses, houseStorage, noticeBoardPosts, churchChapters, gods, townMetrics, townProjects,
 } from '@database/tables';
+import { PROJECT_TYPES, type ProjectType } from '@shared/data/town-projects-config';
 import { processSpoilage, processAutoConsumption, getHungerModifier, processRevenantSustenance, processForgebornMaintenance } from '../services/food-system';
 import { resolveNodePvE, resolveNodePvP } from '../services/tick-combat-resolver';
 import { createDailyReport, compileReport } from '../services/daily-report';
@@ -28,6 +29,7 @@ import { checkLevelUp } from '../services/progression';
 import { checkAchievements } from '../services/achievements';
 import { onResourceGather } from '../services/quest-triggers';
 import { processServiceNpcIncome } from './service-npc-income';
+import { logTownEvent } from '../services/history-logger';
 import { cleanupExpiredDrops } from '../routes/inventory';
 import { processLoans } from './loan-processing';
 import { processReputationDecay } from './reputation-decay';
@@ -235,6 +237,19 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   });
 
   // -----------------------------------------------------------------------
+  // Step 0.6: Sheriff Budget Reset
+  // -----------------------------------------------------------------------
+  await runStep('Sheriff Budget Reset', 0.6, async () => {
+    const resetResult = await db.update(townPolicies)
+      .set({ sheriffBudgetUsedToday: 0 })
+      .where(gt(townPolicies.sheriffBudgetUsedToday, 0));
+    const resetCount = resetResult.rowCount ?? 0;
+    if (resetCount > 0) {
+      console.log(`[DailyTick]   Reset sheriff budget for ${resetCount} town(s)`);
+    }
+  });
+
+  // -----------------------------------------------------------------------
   // Step 1: Food Spoilage (consumption moved to Step 4b, after crafting)
   // -----------------------------------------------------------------------
   await runStep('Food Spoilage', 1, async () => {
@@ -392,9 +407,9 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     // ── Recalculate town metric modifiers from religion ──────
     let metricsUpdated = 0;
     for (const [townId, townChapters] of chaptersByTown) {
-      // Reset all religion modifiers for this town
+      // Reset religion modifiers for this town (preserve projectModifier)
       await db.update(townMetrics)
-        .set({ modifier: 0, effectiveValue: townMetrics.baseValue, lastUpdatedBy: null })
+        .set({ modifier: 0, effectiveValue: sql`LEAST(100, GREATEST(0, ${townMetrics.baseValue} + ${townMetrics.projectModifier}))`, lastUpdatedBy: null })
         .where(eq(townMetrics.townId, townId));
 
       // Find the dominant chapter (use refreshed data from above)
@@ -423,7 +438,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
             await db.update(townMetrics)
               .set({
                 modifier: value,
-                effectiveValue: sql`LEAST(100, GREATEST(0, ${townMetrics.baseValue} + ${value}))`,
+                effectiveValue: sql`LEAST(100, GREATEST(0, ${townMetrics.baseValue} + ${townMetrics.projectModifier} + ${value}))`,
                 lastUpdatedBy: 'RELIGION',
               })
               .where(and(
@@ -1230,6 +1245,195 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     const expiredCount = expiredResult.rowCount ?? 0;
     if (expiredCount > 0) {
       console.log(`[DailyTick]   Expired ${expiredCount} law(s)`);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 6.5: Town Project Completion
+  // -----------------------------------------------------------------------
+  await runStep('Town Project Completion', 6.5, async () => {
+    const now = new Date();
+    const completedProjects = await db.query.townProjects.findMany({
+      where: and(
+        eq(townProjects.status, 'IN_PROGRESS'),
+        lte(townProjects.completesAt, now.toISOString()),
+      ),
+    });
+
+    for (const project of completedProjects) {
+      const config = PROJECT_TYPES[project.projectType as ProjectType];
+      if (!config) {
+        console.log(`[DailyTick]   Unknown project type: ${project.projectType}`);
+        continue;
+      }
+
+      const effect = config.effect;
+
+      if (effect.type === 'METRIC_BOOST') {
+        const metricType = (effect as any).metric as string;
+        const value = (effect as any).value as number;
+        await db.update(townMetrics)
+          .set({
+            projectModifier: sql`${townMetrics.projectModifier} + ${value}`,
+            effectiveValue: sql`LEAST(100, GREATEST(0, ${townMetrics.baseValue} + ${townMetrics.modifier} + ${townMetrics.projectModifier} + ${value}))`,
+            lastUpdatedBy: 'PROJECT',
+          })
+          .where(and(eq(townMetrics.townId, project.townId), eq(townMetrics.metricType, metricType)));
+        console.log(`[DailyTick]   Project ${config.name}: +${value} ${metricType} for town ${project.townId}`);
+      } else if (effect.type === 'ROAD_DANGER_REDUCTION') {
+        // Store as patrol in tradePolicy
+        const policy = await db.query.townPolicies.findFirst({ where: eq(townPolicies.townId, project.townId) });
+        if (policy) {
+          const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+          const patrols = (tp.activePatrols as any[] ?? []);
+          const expiresAt = new Date(Date.now() + ((effect as any).durationDays ?? 14) * 24 * 60 * 60 * 1000).toISOString();
+          patrols.push({
+            routeId: project.targetRouteId,
+            expiresAt,
+            dangerReduction: (effect as any).value ?? 0.15,
+            source: 'PROJECT',
+          });
+          await db.update(townPolicies).set({ tradePolicy: { ...tp, activePatrols: patrols } }).where(eq(townPolicies.townId, project.townId));
+          console.log(`[DailyTick]   Project ${config.name}: road danger reduction on route ${project.targetRouteId}`);
+        }
+      } else if (effect.type === 'TRAVEL_TIME_REDUCTION') {
+        // Store road speed bonus in tradePolicy
+        const policy = await db.query.townPolicies.findFirst({ where: eq(townPolicies.townId, project.townId) });
+        if (policy) {
+          const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+          const roadImprovements = (tp.roadImprovements as any[] ?? []);
+          roadImprovements.push({
+            routeId: project.targetRouteId,
+            speedBonus: (effect as any).value ?? 0.10,
+          });
+          await db.update(townPolicies).set({ tradePolicy: { ...tp, roadImprovements } }).where(eq(townPolicies.townId, project.townId));
+          console.log(`[DailyTick]   Project ${config.name}: travel time reduction on route ${project.targetRouteId}`);
+        }
+      } else if (effect.type === 'BUILDING_CAPACITY') {
+        // Store building capacity bonus in tradePolicy
+        const policy = await db.query.townPolicies.findFirst({ where: eq(townPolicies.townId, project.townId) });
+        if (policy) {
+          const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+          const currentBonus = (tp.buildingCapacityBonus as number) ?? 0;
+          await db.update(townPolicies).set({ tradePolicy: { ...tp, buildingCapacityBonus: currentBonus + ((effect as any).value ?? 5) } }).where(eq(townPolicies.townId, project.townId));
+          console.log(`[DailyTick]   Project ${config.name}: +${(effect as any).value} building capacity for town ${project.townId}`);
+        }
+      } else if (effect.type === 'FESTIVAL') {
+        // Temporary boost to ALL metrics + reputation for residents
+        const festivalBoost = (effect as any).metricBoost ?? 5;
+        const durationDays = (effect as any).durationDays ?? 7;
+        const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+
+        // Boost all metrics temporarily via projectModifier
+        await db.update(townMetrics)
+          .set({
+            projectModifier: sql`${townMetrics.projectModifier} + ${festivalBoost}`,
+            effectiveValue: sql`LEAST(100, GREATEST(0, ${townMetrics.baseValue} + ${townMetrics.modifier} + ${townMetrics.projectModifier} + ${festivalBoost}))`,
+            lastUpdatedBy: 'FESTIVAL',
+          })
+          .where(eq(townMetrics.townId, project.townId));
+
+        // Track festival for expiry
+        const policy = await db.query.townPolicies.findFirst({ where: eq(townPolicies.townId, project.townId) });
+        if (policy) {
+          const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+          await db.update(townPolicies).set({
+            tradePolicy: { ...tp, activeFestival: { expiresAt, metricBoost: festivalBoost } },
+          }).where(eq(townPolicies.townId, project.townId));
+        }
+
+        // Grant reputation to all residents
+        const repBoost = (effect as any).reputationBoost ?? 2;
+        const residents = await db.query.characters.findMany({
+          where: eq(characters.homeTownId, project.townId),
+          columns: { id: true, race: true },
+        });
+        for (const resident of residents) {
+          await addRacialReputationWithBonus(resident.id, resident.race, repBoost, 0);
+        }
+        console.log(`[DailyTick]   Project ${config.name}: festival boost +${festivalBoost} all metrics, +${repBoost} rep for ${residents.length} residents`);
+      } else if (effect.type === 'MARKET_VOLUME_BOOST') {
+        const durationDays = (effect as any).durationDays ?? 7;
+        const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+        const policy = await db.query.townPolicies.findFirst({ where: eq(townPolicies.townId, project.townId) });
+        if (policy) {
+          const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+          await db.update(townPolicies).set({
+            tradePolicy: { ...tp, marketStimulus: { until: expiresAt, bonus: (effect as any).value ?? 0.20 } },
+          }).where(eq(townPolicies.townId, project.townId));
+          console.log(`[DailyTick]   Project ${config.name}: +${((effect as any).value ?? 0.20) * 100}% market volume for ${durationDays} days`);
+        }
+      }
+
+      // Mark project completed
+      await db.update(townProjects)
+        .set({ status: 'COMPLETED', completedAt: now.toISOString() })
+        .where(eq(townProjects.id, project.id));
+
+      logTownEvent(project.townId, 'GOVERNANCE', `Project Completed: ${config.name}`, `${config.name} has been completed.`, project.commissionedById).catch(() => {});
+    }
+
+    if (completedProjects.length > 0) {
+      console.log(`[DailyTick]   Completed ${completedProjects.length} town project(s)`);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 6.6: Temporary Effect Expiry (patrols, festivals, guard shifts, market stimuli)
+  // -----------------------------------------------------------------------
+  await runStep('Temporary Effect Expiry', 6.6, async () => {
+    const now = new Date();
+    const allPolicies = await db.query.townPolicies.findMany({
+      columns: { id: true, townId: true, tradePolicy: true },
+    });
+
+    let expired = 0;
+    for (const policy of allPolicies) {
+      const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+      let changed = false;
+
+      // Expire patrols (sheriff, project, guard shifts)
+      if (Array.isArray(tp.activePatrols) && tp.activePatrols.length > 0) {
+        const before = tp.activePatrols.length;
+        tp.activePatrols = tp.activePatrols.filter((p: any) => new Date(p.expiresAt) > now);
+        if (tp.activePatrols.length < before) {
+          changed = true;
+          expired += before - tp.activePatrols.length;
+        }
+      }
+
+      // Expire market stimulus
+      if (tp.marketStimulus && new Date(tp.marketStimulus.until) <= now) {
+        delete tp.marketStimulus;
+        changed = true;
+        expired++;
+      }
+
+      // Expire festival — revert metric boost
+      if (tp.activeFestival && new Date(tp.activeFestival.expiresAt) <= now) {
+        const boost = tp.activeFestival.metricBoost ?? 5;
+        await db.update(townMetrics)
+          .set({
+            projectModifier: sql`${townMetrics.projectModifier} - ${boost}`,
+            effectiveValue: sql`LEAST(100, GREATEST(0, ${townMetrics.baseValue} + ${townMetrics.modifier} + ${townMetrics.projectModifier} - ${boost}))`,
+            lastUpdatedBy: 'FESTIVAL_EXPIRED',
+          })
+          .where(eq(townMetrics.townId, policy.townId));
+        delete tp.activeFestival;
+        changed = true;
+        expired++;
+        console.log(`[DailyTick]   Festival expired in town ${policy.townId}, reverted +${boost} metric boost`);
+      }
+
+      if (changed) {
+        await db.update(townPolicies)
+          .set({ tradePolicy: tp })
+          .where(eq(townPolicies.id, policy.id));
+      }
+    }
+
+    if (expired > 0) {
+      console.log(`[DailyTick]   Expired ${expired} temporary effect(s)`);
     }
   });
 

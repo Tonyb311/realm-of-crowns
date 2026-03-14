@@ -1426,6 +1426,8 @@ export const townPolicies = pgTable("town_policies", {
 	tradePolicy: jsonb("trade_policy").default({}).notNull(),
 	buildingPermits: boolean("building_permits").default(true).notNull(),
 	sheriffId: text("sheriff_id"),
+	sheriffDailyBudget: integer("sheriff_daily_budget").default(50).notNull(),
+	sheriffBudgetUsedToday: integer("sheriff_budget_used_today").default(0).notNull(),
 	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).notNull().$onUpdate(() => new Date().toISOString()),
 }, (table) => [
@@ -2485,8 +2487,9 @@ export const townMetrics = pgTable("town_metrics", {
 	metricType: text("metric_type").notNull(), // 'DEFENSES', 'PUBLIC_HEALTH', 'LAW_ENFORCEMENT', 'MARKET_EFFICIENCY', 'ELECTION_INTEGRITY'
 	baseValue: integer("base_value").default(50).notNull(),
 	modifier: integer("modifier").default(0).notNull(),
+	projectModifier: integer("project_modifier").default(0).notNull(),
 	effectiveValue: integer("effective_value").default(50).notNull(),
-	lastUpdatedBy: text("last_updated_by"), // 'RELIGION', 'EVENT', 'BUILDING', etc.
+	lastUpdatedBy: text("last_updated_by"), // 'RELIGION', 'EVENT', 'BUILDING', 'PROJECT', etc.
 	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull().$onUpdate(() => new Date().toISOString()),
 }, (table) => [
@@ -2497,6 +2500,43 @@ export const townMetrics = pgTable("town_metrics", {
 		foreignColumns: [towns.id],
 		name: "town_metrics_town_id_fkey"
 	}).onUpdate("cascade").onDelete("cascade"),
+]);
+
+// ============================================================
+// TOWN PROJECTS
+// ============================================================
+
+export const townProjects = pgTable("town_projects", {
+	id: text().primaryKey().notNull(),
+	townId: text("town_id").notNull(),
+	projectType: text("project_type").notNull(),
+	status: text().default('IN_PROGRESS').notNull(), // IN_PROGRESS, COMPLETED, CANCELLED
+	commissionedById: text("commissioned_by_id").notNull(),
+	cost: integer().notNull(),
+	startedAt: timestamp("started_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	completesAt: timestamp("completes_at", { precision: 3, mode: 'string' }).notNull(),
+	completedAt: timestamp("completed_at", { precision: 3, mode: 'string' }),
+	targetRouteId: text("target_route_id"),
+	metadata: jsonb(),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	index("town_projects_town_id_idx").using("btree", table.townId.asc().nullsLast().op("text_ops")),
+	index("town_projects_status_idx").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	foreignKey({
+		columns: [table.townId],
+		foreignColumns: [towns.id],
+		name: "town_projects_town_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.commissionedById],
+		foreignColumns: [characters.id],
+		name: "town_projects_commissioned_by_id_fkey"
+	}).onUpdate("cascade").onDelete("set null"),
+	foreignKey({
+		columns: [table.targetRouteId],
+		foreignColumns: [travelRoutes.id],
+		name: "town_projects_target_route_id_fkey"
+	}).onUpdate("cascade").onDelete("set null"),
 ]);
 
 // ============================================================

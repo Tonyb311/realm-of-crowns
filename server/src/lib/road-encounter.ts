@@ -10,8 +10,8 @@
  */
 
 import { db } from './db';
-import { eq, and, gte, lte, inArray, gt, count, sql } from 'drizzle-orm';
-import { characters, towns, monsters, characterEquipment, combatParticipants, combatSessions, combatEncounterLogs, characterActiveEffects } from '@database/tables';
+import { eq, and, gte, lte, inArray, gt, count, sql, or } from 'drizzle-orm';
+import { characters, towns, monsters, characterEquipment, combatParticipants, combatSessions, combatEncounterLogs, characterActiveEffects, townPolicies, travelRoutes } from '@database/tables';
 import type { BiomeType, ItemRarity } from '@shared/enums';
 import { calculateItemStats, calculateEquipmentTotals } from '../services/item-stats';
 import { logger } from './logger';
@@ -582,6 +582,12 @@ export async function resolveRoadEncounter(
   const religionReduction = await getReligionEncounterReduction(characterId, originTownId, destinationTownId);
   if (religionReduction > 0) {
     encounterChance *= (1 - religionReduction);
+  }
+
+  // Apply patrol danger reduction (sheriff patrols, road patrol projects, guard shifts)
+  const patrolReduction = await getPatrolDangerReduction(originTownId, destinationTownId);
+  if (patrolReduction > 0) {
+    encounterChance *= (1 - patrolReduction);
   }
 
   const roll = Math.random();
@@ -1604,4 +1610,57 @@ export async function resolveGroupRoadEncounter(
     memberResults,
     combatRounds,
   };
+}
+
+/**
+ * Get combined patrol danger reduction for a route between two towns.
+ * Checks tradePolicy.activePatrols for both origin and destination towns.
+ * Sources: SHERIFF patrols, PROJECT road patrols, GUARD_SHIFT emergency spending.
+ */
+async function getPatrolDangerReduction(originTownId: string, destinationTownId: string): Promise<number> {
+  const policies = await db.query.townPolicies.findMany({
+    where: inArray(townPolicies.townId, [originTownId, destinationTownId]),
+    columns: { townId: true, tradePolicy: true },
+  });
+
+  const now = new Date();
+  let totalReduction = 0;
+
+  for (const policy of policies) {
+    const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+    const patrols = (tp.activePatrols as any[]) ?? [];
+
+    for (const patrol of patrols) {
+      if (new Date(patrol.expiresAt) <= now) continue;
+
+      // GUARD_SHIFT covers ALL adjacent routes from that town
+      if (patrol.source === 'GUARD_SHIFT') {
+        totalReduction += patrol.dangerReduction ?? 0;
+        continue;
+      }
+
+      // SHERIFF and PROJECT patrols cover a specific route
+      // Match if the patrol's routeId connects these two towns
+      if (patrol.routeId) {
+        // We need to check if this route connects origin and destination
+        // For efficiency, we check against both town IDs
+        const route = await db.query.travelRoutes.findFirst({
+          where: and(
+            eq(travelRoutes.id, patrol.routeId),
+            or(
+              and(eq(travelRoutes.fromTownId, originTownId), eq(travelRoutes.toTownId, destinationTownId)),
+              and(eq(travelRoutes.fromTownId, destinationTownId), eq(travelRoutes.toTownId, originTownId)),
+            ),
+          ),
+          columns: { id: true },
+        });
+        if (route) {
+          totalReduction += patrol.dangerReduction ?? 0;
+        }
+      }
+    }
+  }
+
+  // Cap at 0.50 (50% max reduction from patrols)
+  return Math.min(0.50, totalReduction);
 }

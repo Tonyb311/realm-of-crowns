@@ -169,6 +169,13 @@
       "when": 1775001600000,
       "tag": "0023_seraphiel_town_history",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1775088000000,
+      "tag": "0024_town_projects_sheriff",
+      "breakpoints": true
     }
   ]
 }
