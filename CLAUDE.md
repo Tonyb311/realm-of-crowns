@@ -193,6 +193,44 @@ pnpm shortcuts: `sim:run`, `sim:list`, `sim:delete`
 
 Browser-based fantasy MMORPG (Renaissance Kingdoms meets D&D). 20 races, 29 professions, 68 towns, player-driven economy/politics. All Phase 1-2B systems complete.
 
+**See also:** `docs/PRODUCT_PHILOSOPHY.md` for product positioning, monetization philosophy, and the luxury standard that guides all work.
+
+## Product Philosophy
+
+**Read `docs/PRODUCT_PHILOSOPHY.md` for the full document.** Key principles that affect every task:
+
+### Identity
+Realm of Crowns is the definitive platform for player-driven political fantasy roleplay. It is two games sharing one character: a daily-action MMO and a play-by-post RPG, unified by a shared character sheet. This is a luxury niche product — not for everyone, but for our specific player, the best thing that exists.
+
+### The Luxury Standard
+Every touchpoint must feel intentional and polished. Not flashy, not bloated — refined.
+- **UI is atmospheric.** Every screen feels like you're inside Aethermere, not using a web app.
+- **Writing is in-voice.** System messages, errors, tooltips, notifications — all in Aethermere voice, never generic software language.
+- **RP tools are a pillar.** Social and RP features are first-class citizens equal to combat and economy.
+- **Quality over quantity.** Each race, profession, class, and town should feel crafted, not generated.
+
+### Decision Filter
+When evaluating any feature, design choice, or implementation approach:
+1. Does it serve our specific player? Not "players in general" — our player.
+2. Does it meet the luxury standard? Intentional and polished, or bolted-on?
+3. Does it reinforce player interdependence? Or bypass other players?
+4. Does it respect the daily-action model? Or create pressure to play more?
+5. Does it feel like it belongs in Aethermere? Or does it break the fiction?
+
+If the answer to any of these is no, rethink before building.
+
+### Two-Game Model
+- **Game 1:** Daily-action MMO (economy, combat, politics, crafting)
+- **Game 2:** Play-by-post RPG on forums (dice rolls, skill checks, narrator tools, player-run adventures)
+- Both share the same character sheet. The game builds the character; the character powers the RP; the RP retains the community.
+- **Hard rule:** Forum RP does NOT affect game state. Ever.
+
+### Monetization Guardrails
+- Never sell power, progression speed, or economic advantage
+- Never gate core gameplay behind a paywall
+- Subscription sells expression and convenience (character slots, cosmetics, RP tools)
+- No ads, no premium currency, no lootboxes, no pay-to-skip
+
 **Tech:** React 19 + TypeScript 5.9 + Vite 7 + Tailwind CSS 4 + Zustand 5 | Node.js 22 + Express 5 | PostgreSQL 15 + Drizzle ORM | Redis 7 | Socket.io | Docker + Azure Container Apps
 
 **Monorepo:** `client/` (React), `server/` (Express API), `shared/` (types + game data), `database/` (Drizzle schema + seeds), `docs/`, `prompts/`
@@ -236,5 +274,7 @@ Browser-based fantasy MMORPG (Renaissance Kingdoms meets D&D). 20 races, 29 prof
 | Player-facing game guide | `docs/GAME_GUIDE.md` |
 | Combat narrator format | `docs/combat-narrator.md` |
 | Economy YAML source of truth | `docs/profession-economy-master.yaml` |
+| Product philosophy & standards | `docs/PRODUCT_PHILOSOPHY.md` |
+| Business model session (2026-03-14) | `docs/session-2026-03-14-business-model.md` |
 
 For file inventories (routes, services, components, pages, cron jobs, middleware), search the codebase directly rather than relying on a static list.
