@@ -20,7 +20,7 @@ export const METRIC_DESCRIPTIONS: Record<TownMetricType, string> = {
 };
 
 /** Which metrics are active (have god-backed modifiers wired). Rest show as "Coming soon". */
-export const ACTIVE_METRICS: TownMetricType[] = ['DEFENSES', 'PUBLIC_HEALTH', 'ELECTION_INTEGRITY'];
+export const ACTIVE_METRICS: TownMetricType[] = ['DEFENSES', 'PUBLIC_HEALTH', 'ELECTION_INTEGRITY', 'LAW_ENFORCEMENT'];
 
 // Shrine consecration costs from church treasury
 export const SHRINE_CONSECRATION_COST = 500; // gold from church treasury

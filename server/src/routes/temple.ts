@@ -9,8 +9,9 @@ import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { calculateChurchTier, CONVERSION_COOLDOWN_DAYS } from '@shared/data/religion-config';
 import { SHRINE_CONSECRATION_COST } from '@shared/data/town-metrics-config';
-import { emitGovernanceEvent } from '../socket/events';
+import { emitGovernanceEvent, getIO } from '../socket/events';
 import { getReputationTier } from '@shared/data/reputation-config';
+import { isTownUnderMartialLaw } from '../services/religion-buffs';
 import crypto from 'crypto';
 
 const POLICY_BYPASS_COOLDOWN_DAYS = 30;
@@ -20,6 +21,9 @@ const SUMMIT_COST = 200;
 const REFERENDUM_COOLDOWN_DAYS = 30;
 const REFERENDUM_DURATION_DAYS = 3;
 const MAX_OPEN_DISPUTES = 3;
+const MARTIAL_LAW_COOLDOWN_DAYS = 30;
+const MARTIAL_LAW_DURATION_DAYS = 7;
+const MARTIAL_LAW_COST = 300;
 
 const router = Router();
 
@@ -1477,6 +1481,11 @@ router.post('/propose-referendum', authGuard, characterGuard, async (req: Authen
       }
     }
 
+    // Check martial law
+    if (await isTownUnderMartialLaw(townId)) {
+      return res.status(400).json({ error: 'Cannot propose referendums during martial law' });
+    }
+
     // Check no active referendum in this town
     const activeRef = await db.query.referendums.findFirst({
       where: and(eq(referendums.townId, townId), eq(referendums.status, 'VOTING')),
@@ -1604,6 +1613,136 @@ router.get('/referendums/:townId', async (req: AuthenticatedRequest, res: Respon
   } catch (error) {
     if (handleDbError(error, res, 'temple-referendums', req)) return;
     logRouteError(req, 500, 'Temple referendums error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// MARTIAL LAW ENDPOINTS (Domakhar — suspend democratic processes)
+// ============================================================
+
+// POST /api/temple/declare-martial-law — Declare martial law (Domakhar HP with Shrine)
+router.post('/declare-martial-law', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId } = req.body;
+
+    if (!townId) {
+      return res.status(400).json({ error: 'townId is required' });
+    }
+
+    // Must be HP of dominant Domakhar chapter with shrine
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(eq(churchChapters.townId, townId), eq(churchChapters.godId, 'domakhar')),
+    });
+    if (!chapter || chapter.highPriestId !== character.id) {
+      return res.status(403).json({ error: 'Must be the High Priest of Domakhar in this town' });
+    }
+
+    if (chapter.tier !== 'DOMINANT') {
+      return res.status(403).json({ error: 'Domakhar chapter must be at DOMINANT tier' });
+    }
+
+    if (!chapter.isShrine) {
+      return res.status(403).json({ error: 'Domakhar shrine must be active' });
+    }
+
+    // Check not already under martial law
+    if (await isTownUnderMartialLaw(townId)) {
+      return res.status(400).json({ error: 'Town is already under martial law' });
+    }
+
+    // Check cooldown (30 days)
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+    });
+    if (policy?.tradePolicy) {
+      const tp = policy.tradePolicy as Record<string, any>;
+      if (tp.domakharMartialLawAt) {
+        const lastDeclaration = new Date(tp.domakharMartialLawAt);
+        const cooldownEnd = new Date(lastDeclaration.getTime() + MARTIAL_LAW_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
+        if (new Date() < cooldownEnd) {
+          return res.status(400).json({
+            error: `Martial law cooldown active until ${cooldownEnd.toISOString().split('T')[0]}`,
+            cooldownEndsAt: cooldownEnd.toISOString(),
+          });
+        }
+      }
+    }
+
+    // Deduct 300g from church treasury
+    if (chapter.treasury < MARTIAL_LAW_COST) {
+      return res.status(400).json({ error: `Church treasury needs at least ${MARTIAL_LAW_COST}g (has ${chapter.treasury}g)` });
+    }
+
+    await db.update(churchChapters).set({
+      treasury: chapter.treasury - MARTIAL_LAW_COST,
+    }).where(eq(churchChapters.id, chapter.id));
+
+    // Set martial law in townPolicies.tradePolicy JSONB
+    const now = new Date();
+    const endsAt = new Date(now.getTime() + MARTIAL_LAW_DURATION_DAYS * 24 * 60 * 60 * 1000);
+
+    const existingTp = (policy?.tradePolicy as Record<string, any>) || {};
+    const newTp = {
+      ...existingTp,
+      martialLawUntil: endsAt.toISOString(),
+      martialLawDeclaredBy: character.id,
+      martialLawDeclaredAt: now.toISOString(),
+      domakharMartialLawAt: now.toISOString(),
+    };
+
+    if (policy) {
+      await db.update(townPolicies).set({ tradePolicy: newTp }).where(eq(townPolicies.townId, townId));
+    } else {
+      await db.insert(townPolicies).values({ id: crypto.randomUUID(), townId, tradePolicy: newTp });
+    }
+
+    // Emit socket event
+    getIO().emit('martial-law:declared', {
+      townId,
+      endsAt: endsAt.toISOString(),
+      declaredBy: character.name,
+    });
+
+    return res.json({ message: 'Martial law declared', endsAt: endsAt.toISOString() });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-declare-martial-law', req)) return;
+    logRouteError(req, 500, 'Temple declare martial law error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/temple/martial-law-status/:townId — Check martial law status (public)
+router.get('/martial-law-status/:townId', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId } = req.params;
+
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+      columns: { tradePolicy: true },
+    });
+
+    const tp = policy?.tradePolicy as Record<string, any> | null;
+    const active = !!tp?.martialLawUntil && new Date(tp.martialLawUntil) > new Date();
+
+    let declaredByName: string | null = null;
+    if (active && tp?.martialLawDeclaredBy) {
+      const declarer = await db.query.characters.findFirst({
+        where: eq(characters.id, tp.martialLawDeclaredBy),
+        columns: { name: true },
+      });
+      declaredByName = declarer?.name ?? null;
+    }
+
+    return res.json({
+      active,
+      endsAt: active ? tp!.martialLawUntil : null,
+      declaredBy: active ? declaredByName : null,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-martial-law-status', req)) return;
+    logRouteError(req, 500, 'Temple martial law status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

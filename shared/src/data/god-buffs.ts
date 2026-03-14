@@ -157,6 +157,23 @@ export const GOD_BUFFS: Record<string, GodBuff> = {
     },
     shrineEffects: { bindingReferendum: 1 },
   },
+  domakhar: {
+    personalBuffs: {
+      MINORITY: { lawEnforcementPercent: 0.03 },
+      CHAPTER: { lawEnforcementPercent: 0.05, townGuardBonus: 1 },
+      ESTABLISHED: { lawEnforcementPercent: 0.08, townGuardBonus: 1 },
+      DOMINANT: { lawEnforcementPercent: 0.10, townGuardBonus: 1 },
+    },
+    townEffects: {
+      ESTABLISHED: { lawEnforcementPercent: 0.03 },
+      DOMINANT: { lawEnforcementPercent: 0.05, guardCapabilityPercent: 0.10 },
+    },
+    metricModifiers: {
+      ESTABLISHED: { LAW_ENFORCEMENT: 5 },
+      DOMINANT: { LAW_ENFORCEMENT: 10 },
+    },
+    shrineEffects: { martialLaw: 1 },
+  },
 };
 
 /** Get a character's personal religion buffs based on their god and chapter tier */
@@ -191,4 +208,7 @@ export const BUFF_LABELS: Record<string, string> = {
   electionIntegrityPercent: 'Election Integrity',
   disputeResolution: 'Dispute Resolution',
   fileFormalDispute: 'Formal Disputes',
+  lawEnforcementPercent: 'Law Enforcement',
+  townGuardBonus: 'Town Guard Strength',
+  guardCapabilityPercent: 'Guard Capability',
 };

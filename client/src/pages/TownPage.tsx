@@ -17,6 +17,7 @@ import {
   Home,
   Package,
   Scale,
+  Shield,
 } from 'lucide-react';
 import api from '../services/api';
 import { getSocket } from '../services/socket';
@@ -213,6 +214,16 @@ export default function TownPage() {
     queryFn: async () => (await api.get(`/temple/summit-status/${townId}`)).data,
     enabled: !!townId,
     staleTime: 60000, // check once per minute
+  });
+
+  // Fetch martial law status for banner
+  const { data: martialLawStatus } = useQuery<{
+    active: boolean; endsAt: string | null; declaredBy: string | null;
+  }>({
+    queryKey: ['temple', 'martial-law-status', townId],
+    queryFn: async () => (await api.get(`/temple/martial-law-status/${townId}`)).data,
+    enabled: !!townId,
+    staleTime: 60000,
   });
 
   // Fetch active referendums for banner
@@ -469,6 +480,26 @@ export default function TownPage() {
           </div>
         </div>
       </header>
+
+      {/* Martial Law Banner — most prominent */}
+      {martialLawStatus?.active && (
+        <div className="bg-red-600/20 border-b-2 border-red-500">
+          <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-3">
+              <Shield className="w-5 h-5 text-red-400 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-display text-red-400 uppercase tracking-wide font-bold">
+                  Martial Law
+                </p>
+                <p className="text-xs text-red-300/80">
+                  Elections, impeachments, and referendums suspended until {new Date(martialLawStatus.endsAt!).toLocaleDateString()}
+                  {martialLawStatus.declaredBy && ` — Declared by ${martialLawStatus.declaredBy}`}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Diplomatic Summit Banner */}
       {summitStatus?.active && (

@@ -232,6 +232,15 @@ export default function TownHallPage() {
     },
   });
 
+  // Martial law status
+  const { data: martialLawStatus } = useQuery<{
+    active: boolean; endsAt: string | null; declaredBy: string | null;
+  }>({
+    queryKey: ['temple', 'martial-law-status', townId],
+    queryFn: async () => (await api.get(`/temple/martial-law-status/${townId}`)).data,
+    enabled: !!townId,
+  });
+
   // -------------------------------------------------------------------------
   // Relocation mutations
   // -------------------------------------------------------------------------
@@ -454,6 +463,18 @@ export default function TownHallPage() {
                   <Vote className="w-5 h-5 text-realm-gold-400" />
                   Elections
                 </h2>
+                {martialLawStatus?.active && (
+                  <div className="bg-red-600/15 border border-red-500/40 rounded-lg p-4 mb-4 flex items-center gap-3">
+                    <Shield className="w-5 h-5 text-red-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-display text-red-400 uppercase font-bold">Martial Law</p>
+                      <p className="text-xs text-red-300/70">
+                        Elections suspended until {new Date(martialLawStatus.endsAt!).toLocaleDateString()}
+                        {martialLawStatus.declaredBy && ` — Declared by ${martialLawStatus.declaredBy}`}
+                      </p>
+                    </div>
+                  </div>
+                )}
                 {electionsLoading ? (
                   <div className="flex items-center gap-2 text-realm-text-muted text-sm">
                     <Loader2 className="w-4 h-4 animate-spin" />

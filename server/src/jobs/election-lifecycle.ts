@@ -9,17 +9,40 @@ import type { Server } from 'socket.io';
 const NOMINATION_DURATION_HOURS = 24;
 const VOTING_DURATION_HOURS = 48;
 
+/**
+ * Batch-fetch all town IDs currently under martial law.
+ * Called once per cron cycle and passed to all functions.
+ */
+async function getMartialLawTowns(): Promise<Set<string>> {
+  const now = new Date().toISOString();
+  const allPolicies = await db.query.townPolicies.findMany({
+    columns: { townId: true, tradePolicy: true },
+  });
+  const martialLawTownIds = new Set<string>();
+  for (const p of allPolicies) {
+    const tp = p.tradePolicy as Record<string, any> | null;
+    if (tp?.martialLawUntil && new Date(tp.martialLawUntil) > new Date(now)) {
+      martialLawTownIds.add(p.townId);
+    }
+  }
+  return martialLawTownIds;
+}
+
 export function startElectionLifecycle(io: Server) {
   // Run every 5 minutes
   cron.schedule('*/5 * * * *', async () => {
     logger.debug({ job: 'electionLifecycle' }, 'cron job started');
     try {
-      await autoCreateElections(io);
-      await autoCreateHighPriestElections(io);
-      await transitionNominationsToVoting(io);
-      await transitionVotingToCompleted(io);
-      await resolveExpiredImpeachments(io);
-      await resolveExpiredReferendums(io);
+      // Batch-fetch martial law towns once for the entire cycle
+      const martialLawTowns = await getMartialLawTowns();
+
+      await autoCreateElections(io, martialLawTowns);
+      await autoCreateHighPriestElections(io, martialLawTowns);
+      await transitionNominationsToVoting(io, martialLawTowns);
+      await transitionVotingToCompleted(io, martialLawTowns);
+      await resolveExpiredImpeachments(io, martialLawTowns);
+      await resolveExpiredReferendums(io, martialLawTowns);
+      await expireMartialLaw(io);
       cronJobExecutions.inc({ job: 'electionLifecycle', result: 'success' });
     } catch (error: unknown) {
       cronJobExecutions.inc({ job: 'electionLifecycle', result: 'failure' });
@@ -36,7 +59,7 @@ export function startElectionLifecycle(io: Server) {
  */
 const MIN_ELECTION_POPULATION = 3;
 
-async function autoCreateElections(io: Server) {
+async function autoCreateElections(io: Server, martialLawTowns: Set<string>) {
   // Find towns without an active (non-COMPLETED) election
   const townsWithActiveElection = await db.query.elections.findMany({
     where: and(
@@ -59,6 +82,10 @@ async function autoCreateElections(io: Server) {
   for (const town of allTowns) {
     if (townIdsWithElection.has(town.id)) continue;
     if (town.mayorId) continue; // Town already has a mayor, no election needed
+    if (martialLawTowns.has(town.id)) {
+      console.log(`[ElectionLifecycle] Skipping election for "${town.name}" — under martial law`);
+      continue;
+    }
 
     // P1 #33 FIX: Skip towns with fewer than MIN_ELECTION_POPULATION residents
     const [{ residentCount }] = await db
@@ -113,7 +140,7 @@ async function autoCreateElections(io: Server) {
 /**
  * Auto-create HIGH_PRIEST elections for church chapters at CHAPTER tier+ with no High Priest.
  */
-async function autoCreateHighPriestElections(io: Server) {
+async function autoCreateHighPriestElections(io: Server, martialLawTowns: Set<string>) {
   // Find chapters at CHAPTER tier or higher with no high priest
   const eligibleChapters = await db.query.churchChapters.findMany({
     where: and(
@@ -126,8 +153,15 @@ async function autoCreateHighPriestElections(io: Server) {
     },
   });
 
-  // Filter to CHAPTER tier+ (CHAPTER, ESTABLISHED, DOMINANT)
-  const chapterTierPlus = eligibleChapters.filter(ch => ch.tier !== 'MINORITY');
+  // Filter to CHAPTER tier+ (CHAPTER, ESTABLISHED, DOMINANT), exclude martial law towns
+  const chapterTierPlus = eligibleChapters.filter(ch => {
+    if (ch.tier === 'MINORITY') return false;
+    if (martialLawTowns.has(ch.townId)) {
+      console.log(`[ElectionLifecycle] Skipping HP election for ${ch.god.churchName} in "${ch.town.name}" — under martial law`);
+      return false;
+    }
+    return true;
+  });
 
   if (chapterTierPlus.length === 0) return;
 
@@ -194,7 +228,7 @@ async function autoCreateHighPriestElections(io: Server) {
 /**
  * Transition elections from NOMINATIONS to VOTING after 24 hours.
  */
-async function transitionNominationsToVoting(io: Server) {
+async function transitionNominationsToVoting(io: Server, martialLawTowns: Set<string>) {
   const cutoff = new Date();
   cutoff.setHours(cutoff.getHours() - NOMINATION_DURATION_HOURS);
 
@@ -211,6 +245,27 @@ async function transitionNominationsToVoting(io: Server) {
   });
 
   for (const election of electionList) {
+    // Cancel elections in martial law towns
+    if (election.townId && martialLawTowns.has(election.townId)) {
+      await db.update(elections)
+        .set({ phase: 'COMPLETED', status: 'COMPLETED' })
+        .where(eq(elections.id, election.id));
+
+      const locationName = election.town?.name || 'Unknown';
+      console.log(`[ElectionLifecycle] Election in "${locationName}" cancelled — martial law`);
+
+      io.emit('election:results', {
+        electionId: election.id,
+        townId: election.townId,
+        townName: election.town?.name,
+        type: election.type,
+        winnerId: null,
+        winnerName: null,
+        reason: 'martial_law',
+      });
+      continue;
+    }
+
     // If no candidates nominated, skip to COMPLETED with no winner
     if (election.electionCandidates.length === 0) {
       await db.update(elections)
@@ -259,7 +314,7 @@ async function transitionNominationsToVoting(io: Server) {
  * (24h nominations + 24h voting = 48h after startDate, or 24h after entering VOTING).
  * We check endDate to determine when voting closes.
  */
-async function transitionVotingToCompleted(io: Server) {
+async function transitionVotingToCompleted(io: Server, martialLawTowns: Set<string>) {
   const now = new Date();
 
   const electionList = await db.query.elections.findMany({
@@ -278,7 +333,38 @@ async function transitionVotingToCompleted(io: Server) {
     },
   });
 
+  // Also cancel any VOTING-phase elections in martial law towns (regardless of endDate)
+  if (martialLawTowns.size > 0) {
+    const martialLawElections = await db.query.elections.findMany({
+      where: and(
+        eq(elections.phase, 'VOTING'),
+        sql`${elections.townId} IN (${sql.join(Array.from(martialLawTowns).map(id => sql`${id}`), sql`, `)})`,
+      ),
+      with: {
+        town: { columns: { id: true, name: true } },
+      },
+    });
+    for (const ml of martialLawElections) {
+      await db.update(elections)
+        .set({ phase: 'COMPLETED', status: 'COMPLETED' })
+        .where(eq(elections.id, ml.id));
+      console.log(`[ElectionLifecycle] Election in "${ml.town?.name}" cancelled during voting — martial law`);
+      io.emit('election:results', {
+        electionId: ml.id,
+        townId: ml.townId,
+        townName: ml.town?.name,
+        type: ml.type,
+        winnerId: null,
+        winnerName: null,
+        reason: 'martial_law',
+      });
+    }
+  }
+
   for (const election of electionList) {
+    // Skip if already cancelled by martial law above
+    if (election.townId && martialLawTowns.has(election.townId)) continue;
+
     // Tally votes per candidate using raw SQL groupBy
     const voteCounts = await db
       .select({
@@ -364,8 +450,38 @@ async function transitionVotingToCompleted(io: Server) {
 /**
  * Resolve impeachments whose voting period has expired.
  */
-async function resolveExpiredImpeachments(io: Server) {
+async function resolveExpiredImpeachments(io: Server, martialLawTowns: Set<string>) {
   const now = new Date();
+
+  // Cancel active impeachments in martial law towns
+  if (martialLawTowns.size > 0) {
+    const mlImpeachments = await db.query.impeachments.findMany({
+      where: eq(impeachments.status, 'ACTIVE'),
+      with: {
+        character: { columns: { id: true, name: true } },
+        town: { columns: { id: true, name: true } },
+      },
+    });
+    for (const imp of mlImpeachments) {
+      if (imp.townId && martialLawTowns.has(imp.townId)) {
+        await db.update(impeachments)
+          .set({ status: 'FAILED' })
+          .where(eq(impeachments.id, imp.id));
+        console.log(`[ElectionLifecycle] Impeachment against ${imp.character.name} in "${imp.town?.name}" cancelled — martial law`);
+        io.emit('impeachment:resolved', {
+          impeachmentId: imp.id,
+          targetId: imp.targetId,
+          targetName: imp.character.name,
+          townId: imp.townId,
+          townName: imp.town?.name,
+          result: 'FAILED',
+          reason: 'martial_law',
+          votesFor: imp.votesFor,
+          votesAgainst: imp.votesAgainst,
+        });
+      }
+    }
+  }
 
   const expired = await db.query.impeachments.findMany({
     where: and(
@@ -439,8 +555,34 @@ async function resolveExpiredImpeachments(io: Server) {
  * Resolve referendums whose voting period has expired.
  * Simple majority: votesFor > votesAgainst (strictly greater, ties → FAILED).
  */
-async function resolveExpiredReferendums(io: Server) {
+async function resolveExpiredReferendums(io: Server, martialLawTowns: Set<string>) {
   const now = new Date();
+
+  // Cancel active referendums in martial law towns
+  if (martialLawTowns.size > 0) {
+    const activeRefs = await db.query.referendums.findMany({
+      where: eq(referendums.status, 'VOTING'),
+    });
+    for (const ref of activeRefs) {
+      if (martialLawTowns.has(ref.townId)) {
+        await db.update(referendums).set({
+          status: 'FAILED',
+          resolvedAt: now.toISOString(),
+        }).where(eq(referendums.id, ref.id));
+        console.log(`[ElectionLifecycle] Referendum "${ref.question}" in town ${ref.townId} cancelled — martial law`);
+        io.emit('referendum:resolved', {
+          referendumId: ref.id,
+          townId: ref.townId,
+          passed: false,
+          votesFor: ref.votesFor,
+          votesAgainst: ref.votesAgainst,
+          question: ref.question,
+          policyType: ref.policyType,
+          reason: 'martial_law',
+        });
+      }
+    }
+  }
 
   const expiredRefs = await db.query.referendums.findMany({
     where: and(
@@ -542,5 +684,36 @@ async function applyReferendumPolicy(ref: { townId: string; policyType: string; 
     }
     default:
       console.warn(`[ElectionLifecycle] Unknown referendum policy type: ${ref.policyType}`);
+  }
+}
+
+/**
+ * Expire martial law in towns where martialLawUntil has passed.
+ * Clears the martial law fields so elections can resume.
+ */
+async function expireMartialLaw(io: Server) {
+  const now = new Date();
+  const allPolicies = await db.query.townPolicies.findMany({
+    columns: { townId: true, tradePolicy: true },
+  });
+
+  for (const p of allPolicies) {
+    const tp = p.tradePolicy as Record<string, any> | null;
+    if (!tp?.martialLawUntil) continue;
+    if (new Date(tp.martialLawUntil) > now) continue; // still active
+
+    // Martial law has expired — clear the fields
+    const { martialLawUntil, martialLawDeclaredBy, martialLawDeclaredAt, ...rest } = tp;
+    await db.update(townPolicies).set({
+      tradePolicy: rest,
+    }).where(eq(townPolicies.townId, p.townId));
+
+    const town = await db.query.towns.findFirst({
+      where: eq(towns.id, p.townId),
+      columns: { name: true },
+    });
+    console.log(`[ElectionLifecycle] Martial law has ended in "${town?.name ?? p.townId}"`);
+
+    io.emit('martial-law:expired', { townId: p.townId, townName: town?.name });
   }
 }

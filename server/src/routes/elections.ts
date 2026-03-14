@@ -11,6 +11,7 @@ import { getPsionSpec, calculateSincerityScore, getElectionProjection } from '..
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { isTownReleased } from '../lib/content-release';
+import { isTownUnderMartialLaw } from '../services/religion-buffs';
 
 const router = Router();
 
@@ -518,6 +519,11 @@ router.post('/impeach', authGuard, characterGuard, validate(impeachSchema), asyn
     // Cannot impeach yourself
     if (targetId === character.id) {
       return res.status(400).json({ error: 'You cannot impeach yourself' });
+    }
+
+    // Check martial law
+    if (townId && await isTownUnderMartialLaw(townId)) {
+      return res.status(400).json({ error: 'Cannot impeach during martial law' });
     }
 
     // Verify the target actually holds the office

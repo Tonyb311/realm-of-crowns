@@ -9,7 +9,7 @@
 
 import { db } from '../lib/db';
 import { eq, and } from 'drizzle-orm';
-import { characters, churchChapters, travelRoutes } from '@database/tables';
+import { characters, churchChapters, travelRoutes, townPolicies } from '@database/tables';
 import {
   getPersonalReligionBuffs,
   getDominantChurchTownEffects,
@@ -302,4 +302,18 @@ export async function getForeignTradeBonus(characterId: string, townId: string):
   const ctx = await getCharacterReligionContext(characterId);
   const buffs = resolveReligionBuffs({ ...ctx, homeTownId: townId });
   return Math.min(1, buffs.combinedBuffs.foreignTradePercent ?? 0);
+}
+
+/**
+ * Check if a town is currently under martial law.
+ * Martial law state is stored in townPolicies.tradePolicy JSONB.
+ */
+export async function isTownUnderMartialLaw(townId: string): Promise<boolean> {
+  const policy = await db.query.townPolicies.findFirst({
+    where: eq(townPolicies.townId, townId),
+    columns: { tradePolicy: true },
+  });
+  const tp = policy?.tradePolicy as Record<string, any> | null;
+  if (!tp?.martialLawUntil) return false;
+  return new Date(tp.martialLawUntil) > new Date();
 }

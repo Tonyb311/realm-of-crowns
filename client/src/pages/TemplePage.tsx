@@ -495,6 +495,28 @@ export default function TemplePage() {
     },
   });
 
+  // Domakhar: martial law
+  const isDomakharHP = chapters.some(ch => ch.godId === 'domakhar' && ch.highPriestId === character?.id);
+  const hasDomakharShrine = chapters.some(ch => ch.godId === 'domakhar' && ch.isDominant && ch.isShrine);
+
+  const { data: martialLawStatus } = useQuery<{
+    active: boolean; endsAt: string | null; declaredBy: string | null;
+  }>({
+    queryKey: ['temple', 'martial-law-status', townId],
+    queryFn: async () => (await api.get(`/temple/martial-law-status/${townId}`)).data,
+    enabled: !!townId,
+  });
+
+  const martialLawMutation = useMutation({
+    mutationFn: async (tId: string) => {
+      const res = await api.post('/temple/declare-martial-law', { townId: tId });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple'] });
+    },
+  });
+
   // Tessivane: price trends + cross-town prices
   const [showPriceTrends, setShowPriceTrends] = useState(false);
   const [showCrossTownPrices, setShowCrossTownPrices] = useState(false);
@@ -629,7 +651,7 @@ export default function TemplePage() {
                       <span className="text-[10px] uppercase tracking-wider text-realm-text-muted">Personal</span>
                       {Object.entries(personalBuffs).map(([key, val]) => {
                         const isReduction = key.includes('Reduction');
-                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown' || key === 'disputeResolution' || key === 'fileFormalDispute';
+                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown' || key === 'disputeResolution' || key === 'fileFormalDispute' || key === 'townGuardBonus';
                         return (
                           <div key={key} className="flex items-center justify-between text-[11px]">
                             <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
@@ -646,7 +668,7 @@ export default function TemplePage() {
                       <span className="text-[10px] uppercase tracking-wider text-realm-text-muted">Town-wide ({dominant!.godName} dominance)</span>
                       {Object.entries(townBuffs).map(([key, val]) => {
                         const isReduction = key.includes('Reduction');
-                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown' || key === 'disputeResolution' || key === 'fileFormalDispute';
+                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown' || key === 'disputeResolution' || key === 'fileFormalDispute' || key === 'townGuardBonus';
                         return (
                           <div key={key} className="flex items-center justify-between text-[11px]">
                             <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
@@ -1286,6 +1308,59 @@ export default function TemplePage() {
                     )}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Domakhar: Martial Law (HP with shrine) */}
+            {isDomakharHP && hasDomakharShrine && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3 space-y-2">
+                <span className="text-xs font-display text-red-400 flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-red-400" />
+                  Martial Law
+                </span>
+                <p className="text-[11px] text-realm-text-muted">
+                  Suspend all elections, impeachments, and referendums for 7 days. This is the most politically dangerous action in the game. Cost: 300g from church treasury. 30-day cooldown.
+                </p>
+                {martialLawStatus?.active ? (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                    <p className="text-[11px] text-red-400 font-semibold uppercase">Martial Law Active</p>
+                    <p className="text-[10px] text-realm-text-muted">
+                      Ends {new Date(martialLawStatus.endsAt!).toLocaleDateString()}
+                      {martialLawStatus.declaredBy && ` — Declared by ${martialLawStatus.declaredBy}`}
+                    </p>
+                  </div>
+                ) : (
+                  <RealmButton
+                    variant="primary"
+                    size="sm"
+                    onClick={() => martialLawMutation.mutate(templeData!.townId)}
+                    disabled={martialLawMutation.isPending}
+                    className="!bg-red-600 hover:!bg-red-700 !border-red-500"
+                  >
+                    {martialLawMutation.isPending ? 'Declaring...' : 'Declare Martial Law (300g)'}
+                  </RealmButton>
+                )}
+                {martialLawMutation.isSuccess && (
+                  <p className="text-[11px] text-red-400">{martialLawMutation.data.message}</p>
+                )}
+                {martialLawMutation.isError && (
+                  <p className="text-[11px] text-realm-danger">
+                    {(martialLawMutation.error as any)?.response?.data?.error || 'Failed to declare martial law'}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Martial Law Active Banner (non-HP) */}
+            {!isDomakharHP && martialLawStatus?.active && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                <p className="text-[11px] text-red-400 font-semibold uppercase flex items-center gap-1.5">
+                  <Shield className="w-3 h-3" />
+                  Martial Law Active
+                </p>
+                <p className="text-[10px] text-realm-text-muted">
+                  Elections, impeachments, and referendums suspended until {new Date(martialLawStatus.endsAt!).toLocaleDateString()}
+                </p>
               </div>
             )}
 
