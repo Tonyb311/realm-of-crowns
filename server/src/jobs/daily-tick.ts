@@ -13,7 +13,7 @@ import {
   laws, townTreasuries, townPolicies, tradeTransactions, caravans,
   elections, electionVotes, electionCandidates, impeachments, towns, kingdoms,
   worldEvents, combatEncounterLogs, notifications, recipes,
-  ownedAssets, livestock, jobs, houses, houseStorage, noticeBoardPosts, churchChapters, gods, townMetrics, townProjects, townUpgrades,
+  ownedAssets, livestock, jobs, houses, houseStorage, noticeBoardPosts, churchChapters, gods, townMetrics, townProjects, townUpgrades, travelLogs,
 } from '@database/tables';
 import { PROJECT_TYPES, UPGRADE_TYPES, DEGRADATION_THRESHOLD_DAYS, type ProjectType, type UpgradeType } from '@shared/data/town-projects-config';
 import { processSpoilage, processAutoConsumption, getHungerModifier, processRevenantSustenance, processForgebornMaintenance } from '../services/food-system';
@@ -2120,6 +2120,18 @@ export async function processDailyTick(): Promise<DailyTickResult> {
 
     if (repUpdates > 0) {
       console.log(`[DailyTick]   Proximity reputation: ${repUpdates} updates (${summitTowns.size} summit towns)`);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 18: Travel Log Cleanup (delete entries older than 14 days)
+  // -----------------------------------------------------------------------
+  await runStep('Travel Log Cleanup', 18, async () => {
+    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+    const result = await db.delete(travelLogs).where(lt(travelLogs.occurredAt, fourteenDaysAgo));
+    const cleaned = result.rowCount ?? 0;
+    if (cleaned > 0) {
+      console.log(`[DailyTick]   Cleaned up ${cleaned} expired travel log records`);
     }
   });
 

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ClipboardList, Coins, Clock, User, Tag, ShoppingCart,
-  Target, CheckCircle, XCircle, Plus, ArrowLeft,
+  Target, CheckCircle, XCircle, Plus, ArrowLeft, Shield, EyeOff,
 } from 'lucide-react';
 import { Link } from 'react-router';
 import api from '../services/api';
@@ -47,6 +47,9 @@ interface NoticePost {
   isResident: boolean;
   expiresAt: string;
   createdAt: string;
+  isOfficial: boolean;
+  isModerated: boolean;
+  moderationReason: string | null;
   author?: Author;
   claimant?: Claimant | null;
   town?: { id: string; name: string };
@@ -278,7 +281,23 @@ function PostCard({
   const isTradeRequest = post.type === 'TRADE_REQUEST';
 
   return (
-    <div className="bg-realm-bg-800 border border-realm-bg-600 hover:border-realm-gold-500/30 rounded-lg p-4 transition-colors">
+    <div className={`bg-realm-bg-800 border rounded-lg p-4 transition-colors ${
+      post.isModerated
+        ? 'border-realm-danger/40 opacity-70'
+        : post.isOfficial
+          ? 'border-realm-purple-500/40 hover:border-realm-purple-500/60'
+          : 'border-realm-bg-600 hover:border-realm-gold-500/30'
+    }`}>
+      {/* Moderated indicator */}
+      {post.isModerated && (
+        <div className="flex items-center gap-2 text-xs text-realm-danger mb-2 pb-2 border-b border-realm-danger/20">
+          <EyeOff className="w-3.5 h-3.5" />
+          <span className="font-medium">Removed by Sheriff</span>
+          {post.moderationReason && (
+            <span className="text-realm-text-muted">— {post.moderationReason}</span>
+          )}
+        </div>
+      )}
       {/* Header row */}
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex-1 min-w-0">
@@ -288,6 +307,11 @@ function PostCard({
               <RealmBadge variant="uncommon">
                 <Target className="w-3 h-3 mr-1" /> Bounty
               </RealmBadge>
+            )}
+            {post.isOfficial && (
+              <span className="px-2 py-0.5 rounded text-xs font-bold bg-realm-purple-500/20 text-realm-purple-300 border border-realm-purple-500/40 flex items-center gap-1">
+                <Shield className="w-3 h-3" /> OFFICIAL
+              </span>
             )}
             {isTradeRequest && post.tradeDirection && (
               <RealmBadge variant={post.tradeDirection === 'BUYING' ? 'default' : 'uncommon'}>

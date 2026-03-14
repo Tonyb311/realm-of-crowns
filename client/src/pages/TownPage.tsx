@@ -20,6 +20,7 @@ import {
   Shield,
   Skull,
   Hammer,
+  Megaphone,
 } from 'lucide-react';
 import api from '../services/api';
 import { getSocket } from '../services/socket';
@@ -268,6 +269,20 @@ export default function TownPage() {
     enabled: !!townId,
     staleTime: 60000,
     select: (data) => data.filter((r: any) => r.status === 'VOTING'),
+  });
+
+  // Fetch urgent proclamation for banner
+  const { data: urgentProclamation } = useQuery<{
+    title: string; authorName: string; expiresAt: string;
+  } | null>({
+    queryKey: ['governance', 'urgent-proclamation', townId],
+    queryFn: async () => {
+      const res = await api.get(`/governance/proclamations/${townId}`);
+      const urgent = res.data.proclamations?.find((p: any) => p.isUrgent && !p.isExpired);
+      return urgent ? { title: urgent.title, authorName: urgent.author?.name ?? 'Mayor', expiresAt: urgent.expiresAt } : null;
+    },
+    enabled: !!townId,
+    staleTime: 60000,
   });
 
   // Subscribe to player enter/leave town events for live updates
@@ -584,6 +599,24 @@ export default function TownPage() {
           </div>
         </div>
       ))}
+
+      {/* Urgent Proclamation Banner — amber/yellow */}
+      {urgentProclamation && (
+        <div className="bg-amber-500/10 border-b border-amber-500/30">
+          <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-2 text-sm">
+              <Megaphone className="w-4 h-4 text-amber-400 flex-shrink-0" />
+              <span className="text-amber-400 font-display">Mayor&apos;s Urgent Proclamation:</span>
+              <span className="text-realm-text-secondary text-xs">
+                {urgentProclamation.title}
+              </span>
+              <span className="text-realm-text-muted text-[10px] ml-auto">
+                expires {new Date(urgentProclamation.expiresAt).toLocaleDateString()}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Crisis of Faith Banner — grey/ashen */}
       {crisisOfFaithStatus?.active && (

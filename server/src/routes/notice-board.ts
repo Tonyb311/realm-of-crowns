@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../lib/db';
 import { eq, and, gt, desc, sql, count } from 'drizzle-orm';
-import { noticeBoardPosts, characters } from '@database/tables';
+import { noticeBoardPosts, characters, churchChapters, townTreasuries } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
@@ -75,11 +75,27 @@ router.get('/town/:townId', authGuard, characterGuard, async (req: Authenticated
 
     const now = new Date().toISOString();
 
+    // Morvaine ESTABLISHED+ can see moderated posts
+    const showModerated = req.query.showModerated === 'true';
+    let canSeeModerated = false;
+    if (showModerated && character.patronGodId === 'morvaine') {
+      const chapter = await db.query.churchChapters.findFirst({
+        where: and(eq(churchChapters.godId, 'morvaine'), eq(churchChapters.townId, character.homeTownId ?? townId)),
+        columns: { tier: true },
+      });
+      if (chapter && (chapter.tier === 'ESTABLISHED' || chapter.tier === 'DOMINANT')) {
+        canSeeModerated = true;
+      }
+    }
+
     // Build where conditions
     const conditions = [
       eq(noticeBoardPosts.townId, townId),
       gt(noticeBoardPosts.expiresAt, now),
     ];
+    if (!canSeeModerated) {
+      conditions.push(eq(noticeBoardPosts.isModerated, false));
+    }
     if (typeFilter === 'TRADE_REQUEST' || typeFilter === 'BOUNTY') {
       conditions.push(eq(noticeBoardPosts.type, typeFilter));
     }
@@ -90,7 +106,7 @@ router.get('/town/:townId', authGuard, characterGuard, async (req: Authenticated
         author: { columns: { id: true, name: true, level: true } },
         claimant: { columns: { id: true, name: true } },
       },
-      orderBy: desc(noticeBoardPosts.createdAt),
+      orderBy: [desc(noticeBoardPosts.isOfficial), desc(noticeBoardPosts.createdAt)],
       limit,
       offset,
     });
@@ -385,33 +401,47 @@ router.delete('/:postId', authGuard, characterGuard, async (req: AuthenticatedRe
       }
 
       if (post.bountyStatus === 'OPEN') {
-        // OPEN: full refund to author (nobody did any work)
+        // OPEN: full refund — to town treasury if official, to author if personal
         await db.transaction(async (tx) => {
-          await tx.update(characters)
-            .set({ gold: sql`gold + ${post.bountyReward!}` })
-            .where(eq(characters.id, character.id));
+          if (post.isOfficial) {
+            await tx.update(townTreasuries)
+              .set({ balance: sql`${townTreasuries.balance} + ${post.bountyReward!}` })
+              .where(eq(townTreasuries.townId, post.townId));
+          } else {
+            await tx.update(characters)
+              .set({ gold: sql`gold + ${post.bountyReward!}` })
+              .where(eq(characters.id, character.id));
+          }
 
           await tx.update(noticeBoardPosts)
             .set({ bountyStatus: 'REFUNDED', expiresAt: now })
             .where(eq(noticeBoardPosts.id, postId));
         });
 
-        return res.json({ message: 'Post cancelled. Bounty escrow refunded. Posting fee was not refunded.' });
+        return res.json({ message: post.isOfficial
+          ? 'Official bounty cancelled. Escrow returned to town treasury.'
+          : 'Post cancelled. Bounty escrow refunded. Posting fee was not refunded.' });
       }
 
       if (post.bountyStatus === 'CLAIMED') {
-        // CLAIMED: 50% to claimant (they started the work), 50% refund to author
+        // CLAIMED: 50% to claimant, 50% refund — to treasury if official, to author if personal
         const claimantShare = Math.floor(post.bountyReward! / 2);
-        const authorRefund = Math.ceil(post.bountyReward! / 2);
+        const refundShare = Math.ceil(post.bountyReward! / 2);
 
         await db.transaction(async (tx) => {
           await tx.update(characters)
             .set({ gold: sql`gold + ${claimantShare}` })
             .where(eq(characters.id, post.bountyClaimantId!));
 
-          await tx.update(characters)
-            .set({ gold: sql`gold + ${authorRefund}` })
-            .where(eq(characters.id, character.id));
+          if (post.isOfficial) {
+            await tx.update(townTreasuries)
+              .set({ balance: sql`${townTreasuries.balance} + ${refundShare}` })
+              .where(eq(townTreasuries.townId, post.townId));
+          } else {
+            await tx.update(characters)
+              .set({ gold: sql`gold + ${refundShare}` })
+              .where(eq(characters.id, character.id));
+          }
 
           await tx.update(noticeBoardPosts)
             .set({ bountyStatus: 'REFUNDED', expiresAt: now })
@@ -419,7 +449,9 @@ router.delete('/:postId', authGuard, characterGuard, async (req: AuthenticatedRe
         });
 
         return res.json({
-          message: `Post cancelled. ${claimantShare}g paid to claimant, ${authorRefund}g refunded to you. Posting fee was not refunded.`
+          message: post.isOfficial
+            ? `Official bounty cancelled. ${claimantShare}g paid to claimant, ${refundShare}g returned to town treasury.`
+            : `Post cancelled. ${claimantShare}g paid to claimant, ${refundShare}g refunded to you. Posting fee was not refunded.`
         });
       }
     }

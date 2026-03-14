@@ -8,6 +8,7 @@ import { checkLevelUp } from '../services/progression';
 import { emitNotification } from '../socket/events';
 import { addRacialReputation } from '../services/reputation';
 import { REPUTATION_GAINS } from '@shared/data/reputation-config';
+import { logTravelEvent } from '../services/travel-logger';
 import type { CombatRound } from './simulation/types';
 
 // ---------------------------------------------------------------------------
@@ -135,6 +136,9 @@ export async function processTravelTick(): Promise<TravelTickResult> {
       travelRoute: {
         columns: { nodeCount: true, fromTownId: true, toTownId: true, dangerLevel: true, terrain: true },
       },
+      character: {
+        columns: { id: true, name: true, race: true },
+      },
     },
   });
 
@@ -152,7 +156,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
           party: { columns: { id: true } },
           travelGroupMembers: {
             with: {
-              character: { columns: { id: true } },
+              character: { columns: { id: true, name: true, race: true } },
             },
           },
         },
@@ -204,6 +208,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
 
           try { await checkLevelUp(traveler.characterId); } catch { /* non-fatal */ }
           try { await completeDeliveryJobsOnArrival(traveler.characterId, destinationTownId); } catch { /* non-fatal */ }
+          logTravelEvent(destinationTownId, traveler.characterId, traveler.character.name, traveler.character.race, 'ARRIVED', originTownId).catch(() => {});
 
           result.soloArrived++;
           logger.info(
@@ -243,6 +248,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
 
             try { await checkLevelUp(traveler.characterId); } catch { /* non-fatal */ }
             try { await completeDeliveryJobsOnArrival(traveler.characterId, destinationTownId); } catch { /* non-fatal */ }
+            logTravelEvent(destinationTownId, traveler.characterId, traveler.character.name, traveler.character.race, 'ARRIVED', originTownId).catch(() => {});
 
             result.soloArrived++;
             logger.info(
@@ -274,6 +280,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
 
               try { await checkLevelUp(traveler.characterId); } catch { /* non-fatal */ }
               try { await completeDeliveryJobsOnArrival(traveler.characterId, destinationTownId); } catch { /* non-fatal */ }
+              logTravelEvent(destinationTownId, traveler.characterId, traveler.character.name, traveler.character.race, 'ARRIVED', originTownId).catch(() => {});
 
               result.soloArrived++;
               logger.info(
@@ -328,6 +335,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
             });
 
             try { await checkLevelUp(traveler.characterId); } catch { /* non-fatal */ }
+            logTravelEvent(originTownId, traveler.characterId, traveler.character.name, traveler.character.race, 'ARRIVED', destinationTownId).catch(() => {});
 
             logger.info(
               {
@@ -356,6 +364,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
 
           try { await checkLevelUp(traveler.characterId); } catch { /* non-fatal */ }
           try { await completeDeliveryJobsOnArrival(traveler.characterId, destinationTownId); } catch { /* non-fatal */ }
+          logTravelEvent(destinationTownId, traveler.characterId, traveler.character.name, traveler.character.race, 'ARRIVED', originTownId).catch(() => {});
 
           result.soloArrived++;
           logger.info(
@@ -453,6 +462,10 @@ export async function processTravelTick(): Promise<TravelTickResult> {
               try { await checkLevelUp(charId); } catch { /* non-fatal */ }
               try { await completeDeliveryJobsOnArrival(charId, destinationTownId); } catch { /* non-fatal */ }
             }
+            // Travel logs for each group member
+            for (const m of groupState.travelGroup.travelGroupMembers) {
+              logTravelEvent(destinationTownId, m.character.id, m.character.name, m.character.race, 'ARRIVED', originTownId).catch(() => {});
+            }
 
             result.groupsArrived++;
             logger.info(
@@ -491,6 +504,10 @@ export async function processTravelTick(): Promise<TravelTickResult> {
             for (const charId of memberCharacterIds) {
               try { await checkLevelUp(charId); } catch { /* non-fatal */ }
             }
+            // Travel logs for each group member (returned to origin)
+            for (const m of groupState.travelGroup.travelGroupMembers) {
+              logTravelEvent(originTownId, m.character.id, m.character.name, m.character.race, 'ARRIVED', destinationTownId).catch(() => {});
+            }
 
             logger.info(
               {
@@ -528,6 +545,10 @@ export async function processTravelTick(): Promise<TravelTickResult> {
           for (const charId of memberCharacterIds) {
             try { await checkLevelUp(charId); } catch { /* non-fatal */ }
             try { await completeDeliveryJobsOnArrival(charId, destinationTownId); } catch { /* non-fatal */ }
+          }
+          // Travel logs for each group member
+          for (const m of groupState.travelGroup.travelGroupMembers) {
+            logTravelEvent(destinationTownId, m.character.id, m.character.name, m.character.race, 'ARRIVED', originTownId).catch(() => {});
           }
 
           result.groupsArrived++;

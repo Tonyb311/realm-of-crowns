@@ -1,18 +1,19 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../lib/db';
-import { eq, and, or, desc, sql, count, lte } from 'drizzle-orm';
-import { kingdoms, towns, laws, lawVotes, councilMembers, townPolicies, townTreasuries, wars, characters, townResources, buildings, townProjects, travelRoutes, townMetrics, townUpgrades, itemPriceCeilings, itemTemplates } from '@database/tables';
+import { eq, and, or, desc, sql, count, lte, gt, gte, lt } from 'drizzle-orm';
+import { kingdoms, towns, laws, lawVotes, councilMembers, townPolicies, townTreasuries, wars, characters, townResources, buildings, townProjects, travelRoutes, townMetrics, townUpgrades, itemPriceCeilings, itemTemplates, townProclamations, travelLogs, noticeBoardPosts, churchChapters } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { emitGovernanceEvent } from '../socket/events';
+import { emitGovernanceEvent, getIO } from '../socket/events';
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { logTownEvent } from '../services/history-logger';
 import { PROJECT_TYPES, EMERGENCY_SPENDING_TYPES, SHERIFF_PATROL_CONFIG, MAX_CONCURRENT_PROJECTS, MAX_EMERGENCY_PER_DAY, UPGRADE_TYPES, DEGRADATION_THRESHOLD_DAYS, type ProjectType, type EmergencySpendingType, type UpgradeType } from '@shared/data/town-projects-config';
 import { TRADE_POLICY_CONFIG, TOWN_LAW_TYPES, type TownLawType } from '@shared/data/trade-policy-config';
+import { PROCLAMATION_CONFIG } from '@shared/data/proclamation-config';
 import { getTownUpgradeEffects } from '../services/town-upgrades';
 import crypto from 'crypto';
 
@@ -1890,6 +1891,360 @@ router.get('/town-laws/:townId', authGuard, characterGuard, async (req: Authenti
   } catch (error) {
     if (handleDbError(error, res, 'governance-town-laws', req)) return;
     logRouteError(req, 500, 'View town laws error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// =========================================================================
+// PROCLAMATIONS
+// =========================================================================
+
+// POST /governance/issue-proclamation — Mayor issues a proclamation
+const issueProclamationSchema = z.object({
+  townId: z.string().min(1),
+  title: z.string().min(1).max(PROCLAMATION_CONFIG.maxTitleLength),
+  content: z.string().min(1).max(PROCLAMATION_CONFIG.maxContentLength),
+  isUrgent: z.boolean().optional().default(false),
+});
+
+router.post('/issue-proclamation', authGuard, characterGuard, requireTown, validate(issueProclamationSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId, title, content, isUrgent } = req.body;
+    const character = req.character!;
+
+    // Must be mayor
+    const town = await db.query.towns.findFirst({ where: eq(towns.id, townId), columns: { id: true, name: true, mayorId: true } });
+    if (!town || town.mayorId !== character.id) {
+      return res.status(403).json({ error: 'Only the mayor can issue proclamations' });
+    }
+
+    // Urgent cooldown check
+    if (isUrgent) {
+      const policy = await db.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId), columns: { tradePolicy: true } });
+      const lastUrgent = (policy?.tradePolicy as Record<string, unknown>)?.lastUrgentProclamationAt as string | undefined;
+      if (lastUrgent) {
+        const cooldownMs = PROCLAMATION_CONFIG.urgentCooldownDays * 24 * 60 * 60 * 1000;
+        if (Date.now() - new Date(lastUrgent).getTime() < cooldownMs) {
+          return res.status(400).json({ error: `Urgent proclamations can only be issued once every ${PROCLAMATION_CONFIG.urgentCooldownDays} days` });
+        }
+      }
+    }
+
+    const now = new Date().toISOString();
+    const expiresAt = isUrgent ? new Date(Date.now() + PROCLAMATION_CONFIG.urgentExpiryDays * 24 * 60 * 60 * 1000).toISOString() : undefined;
+    const procId = crypto.randomUUID();
+
+    await db.transaction(async (tx) => {
+      // Unpin all existing proclamations for this town
+      await tx.update(townProclamations).set({ isPinned: false }).where(eq(townProclamations.townId, townId));
+
+      // Insert new proclamation (auto-pinned)
+      await tx.insert(townProclamations).values({
+        id: procId,
+        townId,
+        authorId: character.id,
+        title,
+        content,
+        isPinned: true,
+        isUrgent,
+        createdAt: now,
+        expiresAt,
+      });
+
+      // Track urgent cooldown in tradePolicy JSONB
+      if (isUrgent) {
+        const existing = await tx.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId), columns: { tradePolicy: true } });
+        const tp = (existing?.tradePolicy as Record<string, unknown>) ?? {};
+        await tx.update(townPolicies).set({ tradePolicy: { ...tp, lastUrgentProclamationAt: now } }).where(eq(townPolicies.townId, townId));
+      }
+    });
+
+    // Log historical event
+    logTownEvent(townId, 'GOVERNANCE', `${isUrgent ? 'Urgent ' : ''}Proclamation Issued: ${title}`, `Mayor ${character.name} issued${isUrgent ? ' an URGENT' : ' a'} proclamation: ${title}`, character.id).catch(() => {});
+
+    // Emit socket event for urgent proclamations
+    if (isUrgent) {
+      try {
+        getIO().to(`town:${townId}`).emit('governance:urgent-proclamation', {
+          townId,
+          proclamationId: procId,
+          title,
+          authorName: character.name,
+          expiresAt,
+        });
+      } catch { /* socket not critical */ }
+    }
+
+    return res.json({ success: true, proclamationId: procId });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-issue-proclamation', req)) return;
+    logRouteError(req, 500, 'Issue proclamation error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /governance/pin-proclamation — Mayor pins a different proclamation
+const pinProclamationSchema = z.object({
+  proclamationId: z.string().min(1),
+});
+
+router.post('/pin-proclamation', authGuard, characterGuard, requireTown, validate(pinProclamationSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { proclamationId } = req.body;
+    const character = req.character!;
+
+    const proc = await db.query.townProclamations.findFirst({ where: eq(townProclamations.id, proclamationId), columns: { id: true, townId: true } });
+    if (!proc) return res.status(404).json({ error: 'Proclamation not found' });
+
+    const town = await db.query.towns.findFirst({ where: eq(towns.id, proc.townId), columns: { mayorId: true } });
+    if (!town || town.mayorId !== character.id) {
+      return res.status(403).json({ error: 'Only the mayor can pin proclamations' });
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.update(townProclamations).set({ isPinned: false }).where(eq(townProclamations.townId, proc.townId));
+      await tx.update(townProclamations).set({ isPinned: true }).where(eq(townProclamations.id, proclamationId));
+    });
+
+    return res.json({ success: true });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-pin-proclamation', req)) return;
+    logRouteError(req, 500, 'Pin proclamation error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /governance/proclamations/:townId — View proclamations (public)
+router.get('/proclamations/:townId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId } = req.params;
+    const thirtyDaysAgo = new Date(Date.now() - PROCLAMATION_CONFIG.recentDays * 24 * 60 * 60 * 1000).toISOString();
+
+    const procs = await db.query.townProclamations.findMany({
+      where: and(
+        eq(townProclamations.townId, townId),
+        gte(townProclamations.createdAt, thirtyDaysAgo),
+      ),
+      with: { author: { columns: { id: true, name: true } } },
+      orderBy: [desc(townProclamations.isPinned), desc(townProclamations.createdAt)],
+    });
+
+    return res.json({
+      proclamations: procs.map((p: typeof procs[number]) => ({
+        id: p.id,
+        title: p.title,
+        content: p.content,
+        isPinned: p.isPinned,
+        isUrgent: p.isUrgent,
+        createdAt: p.createdAt,
+        expiresAt: p.expiresAt,
+        isExpired: p.expiresAt ? new Date(p.expiresAt) < new Date() : false,
+        author: p.author,
+      })),
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-proclamations', req)) return;
+    logRouteError(req, 500, 'View proclamations error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// =========================================================================
+// SHERIFF — NOTICE BOARD MODERATION
+// =========================================================================
+
+const moderatePostSchema = z.object({
+  townId: z.string().min(1),
+  postId: z.string().min(1),
+  reason: z.string().min(1).max(500),
+});
+
+router.post('/sheriff-moderate-post', authGuard, characterGuard, requireTown, validate(moderatePostSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId, postId, reason } = req.body;
+    const character = req.character!;
+
+    // Verify sheriff
+    const policy = await db.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId), columns: { sheriffId: true } });
+    if (!policy || policy.sheriffId !== character.id) {
+      return res.status(403).json({ error: 'Only the sheriff can moderate notice board posts' });
+    }
+
+    // Find the post
+    const post = await db.query.noticeBoardPosts.findFirst({
+      where: and(eq(noticeBoardPosts.id, postId), eq(noticeBoardPosts.townId, townId)),
+      columns: { id: true, title: true, isModerated: true },
+    });
+    if (!post) return res.status(404).json({ error: 'Post not found in this town' });
+    if (post.isModerated) return res.status(400).json({ error: 'Post is already moderated' });
+
+    await db.update(noticeBoardPosts)
+      .set({ isModerated: true, moderationReason: reason })
+      .where(eq(noticeBoardPosts.id, postId));
+
+    logTownEvent(townId, 'GOVERNANCE', `Post Moderated: ${post.title}`, `Sheriff ${character.name} removed notice board post: ${post.title} — Reason: ${reason}`, character.id).catch(() => {});
+
+    return res.json({ success: true });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-sheriff-moderate', req)) return;
+    logRouteError(req, 500, 'Sheriff moderate post error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// =========================================================================
+// SHERIFF — OFFICIAL BOUNTIES
+// =========================================================================
+
+const postBountySchema = z.object({
+  townId: z.string().min(1),
+  title: z.string().min(1).max(100),
+  description: z.string().min(1).max(500),
+  reward: z.number().int().min(10),
+  targetCharacterId: z.string().optional(),
+  durationDays: z.number().int().min(1).max(7),
+});
+
+router.post('/sheriff-post-bounty', authGuard, characterGuard, requireTown, validate(postBountySchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId, title, description, reward, targetCharacterId, durationDays } = req.body;
+    const character = req.character!;
+
+    // Verify sheriff
+    const policy = await db.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId), columns: { sheriffId: true, sheriffDailyBudget: true, sheriffBudgetUsedToday: true } });
+    if (!policy || policy.sheriffId !== character.id) {
+      return res.status(403).json({ error: 'Only the sheriff can post official bounties' });
+    }
+
+    // Check budget
+    const budgetRemaining = (policy.sheriffDailyBudget ?? 50) - (policy.sheriffBudgetUsedToday ?? 0);
+    if (reward > budgetRemaining) {
+      return res.status(400).json({ error: `Insufficient sheriff budget. Remaining: ${budgetRemaining}g` });
+    }
+
+    // Check town treasury
+    const treasury = await db.query.townTreasuries.findFirst({ where: eq(townTreasuries.townId, townId), columns: { balance: true } });
+    if (!treasury || treasury.balance < reward) {
+      return res.status(400).json({ error: 'Insufficient town treasury for bounty reward' });
+    }
+
+    const postId = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+    const now = new Date().toISOString();
+
+    await db.transaction(async (tx) => {
+      // Deduct from sheriff budget
+      await tx.update(townPolicies)
+        .set({ sheriffBudgetUsedToday: sql`COALESCE(${townPolicies.sheriffBudgetUsedToday}, 0) + ${reward}` })
+        .where(eq(townPolicies.townId, townId));
+
+      // Deduct from town treasury (escrow)
+      await tx.update(townTreasuries)
+        .set({ balance: sql`${townTreasuries.balance} - ${reward}` })
+        .where(eq(townTreasuries.townId, townId));
+
+      // Create notice board post
+      await tx.insert(noticeBoardPosts).values({
+        id: postId,
+        townId,
+        authorId: character.id,
+        type: 'BOUNTY',
+        title,
+        body: description,
+        bountyReward: reward,
+        bountyStatus: 'OPEN',
+        isOfficial: true,
+        postingFee: 0,
+        isResident: true,
+        expiresAt,
+        createdAt: now,
+        updatedAt: now,
+        ...(targetCharacterId ? { bountyClaimantId: undefined } : {}),
+      });
+    });
+
+    logTownEvent(townId, 'GOVERNANCE', `Official Bounty Posted: ${title}`, `Sheriff ${character.name} posted official bounty: ${title} (${reward}g reward)`, character.id).catch(() => {});
+
+    return res.json({ success: true, postId });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-sheriff-bounty', req)) return;
+    logRouteError(req, 500, 'Sheriff post bounty error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// =========================================================================
+// SHERIFF — TRAVEL LOGS
+// =========================================================================
+
+router.get('/travel-logs/:townId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId } = req.params;
+    const days = Math.min(14, Math.max(1, parseInt(req.query.days as string) || 7));
+    const character = req.character!;
+
+    // Auth: must be sheriff OR Morvaine ESTABLISHED+
+    const policy = await db.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId), columns: { sheriffId: true } });
+    const isSheriff = policy?.sheriffId === character.id;
+
+    let isMorvaineEstablished = false;
+    if (!isSheriff) {
+      if (character.patronGodId === 'morvaine') {
+        const chapter = await db.query.churchChapters.findFirst({
+          where: and(eq(churchChapters.godId, 'morvaine'), eq(churchChapters.townId, character.homeTownId ?? townId)),
+          columns: { tier: true },
+        });
+        if (chapter && (chapter.tier === 'ESTABLISHED' || chapter.tier === 'DOMINANT')) {
+          isMorvaineEstablished = true;
+        }
+      }
+    }
+
+    if (!isSheriff && !isMorvaineEstablished) {
+      return res.status(403).json({ error: 'Only the sheriff or Morvaine ESTABLISHED+ members can view travel logs' });
+    }
+
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+    const logs = await db.query.travelLogs.findMany({
+      where: and(
+        eq(travelLogs.townId, townId),
+        gte(travelLogs.occurredAt, cutoff),
+      ),
+      orderBy: desc(travelLogs.occurredAt),
+      limit: 500,
+    });
+
+    // Resolve town names for fromTownId/toTownId
+    const townIds = new Set<string>();
+    for (const log of logs) {
+      if (log.fromTownId) townIds.add(log.fromTownId);
+      if (log.toTownId) townIds.add(log.toTownId);
+    }
+
+    const townNames: Record<string, string> = {};
+    if (townIds.size > 0) {
+      const townRows = await db.query.towns.findMany({
+        where: or(...[...townIds].map(id => eq(towns.id, id))),
+        columns: { id: true, name: true },
+      });
+      for (const t of townRows) townNames[t.id] = t.name;
+    }
+
+    return res.json({
+      logs: logs.map((l: typeof logs[number]) => ({
+        id: l.id,
+        characterName: l.characterName,
+        characterRace: l.characterRace,
+        action: l.action,
+        fromTown: l.fromTownId ? townNames[l.fromTownId] ?? l.fromTownId : null,
+        toTown: l.toTownId ? townNames[l.toTownId] ?? l.toTownId : null,
+        occurredAt: l.occurredAt,
+      })),
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-travel-logs', req)) return;
+    logRouteError(req, 500, 'View travel logs error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

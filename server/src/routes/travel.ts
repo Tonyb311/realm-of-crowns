@@ -30,6 +30,7 @@ import { logRouteError } from '../lib/error-logger';
 import { getNextTickTime } from '../lib/game-day';
 import { calculateWeightState } from '../services/weight-calculator';
 import { computeFeatBonus } from '@shared/data/feats';
+import { logTravelEvent } from '../services/travel-logger';
 
 const router = Router();
 
@@ -361,6 +362,13 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
       const etaTicks = calculateEtaTicks(0, route.nodeCount, direction, gts.speedModifier);
       // TODO: Apply worst-member encumbrance multiplier for group travel
 
+      // Log departure for each group member (fire-and-forget)
+      const groupDest = direction === 'forward' ? route.toTownId : route.fromTownId;
+      for (const m of activePartyMembers) {
+        const mc = (m as any).character;
+        logTravelEvent(character.currentTownId!, mc.id, mc.name, mc.race, 'DEPARTED', undefined, groupDest).catch(() => {});
+      }
+
       return res.status(201).json({
         type: 'party',
         travelState: {
@@ -412,6 +420,10 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
 
       return state;
     });
+
+    // Log departure (fire-and-forget)
+    const soloDest = direction === 'forward' ? route.toTownId : route.fromTownId;
+    logTravelEvent(character.currentTownId!, character.id, character.name, character.race, 'DEPARTED', undefined, soloDest).catch(() => {});
 
     const firstNode = route.travelNodes[0] || null;
     const baseEtaTicks = calculateEtaTicks(0, route.nodeCount, direction, travelState.speedModifier);

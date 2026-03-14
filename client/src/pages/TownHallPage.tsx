@@ -28,6 +28,10 @@ import {
   Scale,
   Plus,
   Trash2,
+  Megaphone,
+  Pin,
+  Eye,
+  BookOpen,
 } from 'lucide-react';
 import api from '../services/api';
 import GoldAmount from '../components/shared/GoldAmount';
@@ -38,6 +42,7 @@ import { buildingTypeLabel } from '@shared/data/building-labels';
 import { METRIC_LABELS, type TownMetricType } from '@shared/data/town-metrics-config';
 import { PROJECT_TYPES, EMERGENCY_SPENDING_TYPES, SHERIFF_PATROL_CONFIG, PROJECT_CATEGORIES, UPGRADE_TYPES, DEGRADATION_THRESHOLD_DAYS, type ProjectType, type EmergencySpendingType, type UpgradeType } from '@shared/data/town-projects-config';
 import { TRADE_POLICY_CONFIG, TOWN_LAW_TYPES } from '@shared/data/trade-policy-config';
+import { PROCLAMATION_CONFIG } from '@shared/data/proclamation-config';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -217,6 +222,28 @@ interface TownLaw {
   proposedById: string;
   proposedByName: string;
   createdAt: string;
+}
+
+interface Proclamation {
+  id: string;
+  title: string;
+  content: string;
+  isPinned: boolean;
+  isUrgent: boolean;
+  createdAt: string;
+  expiresAt: string | null;
+  isExpired: boolean;
+  author: { id: string; name: string };
+}
+
+interface TravelLogEntry {
+  id: string;
+  characterName: string;
+  characterRace: string;
+  action: string;
+  fromTown: string | null;
+  toTown: string | null;
+  occurredAt: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -470,6 +497,80 @@ export default function TownHallPage() {
     queryKey: ['governance', 'town-laws', townId],
     queryFn: async () => (await api.get(`/governance/town-laws/${townId}`)).data,
     enabled: !!townId,
+  });
+
+  // Proclamations
+  const { data: proclamationsData } = useQuery<{ proclamations: Proclamation[] }>({
+    queryKey: ['governance', 'proclamations', townId],
+    queryFn: async () => (await api.get(`/governance/proclamations/${townId}`)).data,
+    enabled: !!townId,
+  });
+
+  // Travel logs (sheriff only — silently fails for non-sheriff)
+  const { data: travelLogsData } = useQuery<{ logs: TravelLogEntry[] }>({
+    queryKey: ['governance', 'travel-logs', townId],
+    queryFn: async () => (await api.get(`/governance/travel-logs/${townId}`)).data,
+    enabled: !!townId,
+    retry: false,
+  });
+
+  // Proclamation form state
+  const [procTitle, setProcTitle] = useState('');
+  const [procContent, setProcContent] = useState('');
+  const [procUrgent, setProcUrgent] = useState(false);
+  const [showTravelLogs, setShowTravelLogs] = useState(false);
+
+  // Sheriff moderation state
+  const [moderatePostId, setModeratePostId] = useState('');
+  const [moderateReason, setModerateReason] = useState('');
+  const [bountyTitle, setBountyTitle] = useState('');
+  const [bountyDesc, setBountyDesc] = useState('');
+  const [bountyReward, setBountyReward] = useState('');
+  const [bountyDays, setBountyDays] = useState('3');
+
+  const issueProclamationMutation = useMutation({
+    mutationFn: async (data: { townId: string; title: string; content: string; isUrgent: boolean }) => {
+      return (await api.post('/governance/issue-proclamation', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['governance', 'proclamations'] });
+      setProcTitle('');
+      setProcContent('');
+      setProcUrgent(false);
+    },
+  });
+
+  const pinProclamationMutation = useMutation({
+    mutationFn: async (data: { proclamationId: string }) => {
+      return (await api.post('/governance/pin-proclamation', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['governance', 'proclamations'] });
+    },
+  });
+
+  const sheriffModerateMutation = useMutation({
+    mutationFn: async (data: { townId: string; postId: string; reason: string }) => {
+      return (await api.post('/governance/sheriff-moderate-post', data)).data;
+    },
+    onSuccess: () => {
+      setModeratePostId('');
+      setModerateReason('');
+    },
+  });
+
+  const sheriffBountyMutation = useMutation({
+    mutationFn: async (data: { townId: string; title: string; description: string; reward: number; durationDays: number }) => {
+      return (await api.post('/governance/sheriff-post-bounty', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['governance', 'sheriff-status'] });
+      queryClient.invalidateQueries({ queryKey: ['governance', 'town-info'] });
+      setBountyTitle('');
+      setBountyDesc('');
+      setBountyReward('');
+      setBountyDays('3');
+    },
   });
 
   // Trade policy form state
@@ -1395,6 +1496,107 @@ export default function TownHallPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Sheriff: Notice Board Moderation */}
+                  {isSheriff && townId && (
+                    <div className="border-t border-realm-border pt-3">
+                      <p className="text-xs text-realm-text-muted mb-2 flex items-center gap-1">
+                        <Eye className="w-3 h-3" /> Moderate Notice Board Post
+                      </p>
+                      <div className="flex gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={moderatePostId}
+                          onChange={e => setModeratePostId(e.target.value)}
+                          placeholder="Post ID"
+                          className="flex-1 px-2 py-1.5 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary placeholder:text-realm-text-muted/50"
+                        />
+                        <input
+                          type="text"
+                          value={moderateReason}
+                          onChange={e => setModerateReason(e.target.value)}
+                          placeholder="Reason"
+                          className="flex-1 px-2 py-1.5 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary placeholder:text-realm-text-muted/50"
+                        />
+                        <button
+                          onClick={() => sheriffModerateMutation.mutate({ townId, postId: moderatePostId, reason: moderateReason })}
+                          disabled={sheriffModerateMutation.isPending || !moderatePostId || !moderateReason}
+                          className="px-3 py-1.5 text-[10px] bg-realm-danger/10 border border-realm-danger/30 text-realm-danger rounded-sm hover:bg-realm-danger/20 disabled:opacity-40"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      {sheriffModerateMutation.isError && (
+                        <p className="text-xs text-realm-danger">{(sheriffModerateMutation.error as any)?.response?.data?.error ?? 'Failed'}</p>
+                      )}
+                      {sheriffModerateMutation.isSuccess && <p className="text-xs text-realm-success">Post moderated.</p>}
+                    </div>
+                  )}
+
+                  {/* Sheriff: Official Bounty */}
+                  {isSheriff && townId && (
+                    <div className="border-t border-realm-border pt-3">
+                      <p className="text-xs text-realm-text-muted mb-2 flex items-center gap-1">
+                        <BookOpen className="w-3 h-3" /> Post Official Bounty
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 mb-2">
+                        <input type="text" value={bountyTitle} onChange={e => setBountyTitle(e.target.value)} placeholder="Title" maxLength={100}
+                          className="px-2 py-1.5 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary placeholder:text-realm-text-muted/50" />
+                        <input type="number" value={bountyReward} onChange={e => setBountyReward(e.target.value)} placeholder="Reward (gold)" min={10}
+                          className="px-2 py-1.5 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary placeholder:text-realm-text-muted/50" />
+                      </div>
+                      <input type="text" value={bountyDesc} onChange={e => setBountyDesc(e.target.value)} placeholder="Description" maxLength={500}
+                        className="w-full mb-2 px-2 py-1.5 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary placeholder:text-realm-text-muted/50" />
+                      <div className="flex items-center gap-2">
+                        <select value={bountyDays} onChange={e => setBountyDays(e.target.value)}
+                          className="px-2 py-1.5 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary">
+                          {[1,2,3,4,5,6,7].map(d => <option key={d} value={d}>{d} day{d > 1 ? 's' : ''}</option>)}
+                        </select>
+                        <button
+                          onClick={() => sheriffBountyMutation.mutate({ townId, title: bountyTitle.trim(), description: bountyDesc.trim(), reward: Number(bountyReward), durationDays: Number(bountyDays) })}
+                          disabled={sheriffBountyMutation.isPending || !bountyTitle.trim() || !bountyDesc.trim() || !bountyReward}
+                          className="flex-1 py-1.5 text-[10px] bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400 rounded-sm hover:bg-realm-gold-500/20 disabled:opacity-40"
+                        >
+                          {sheriffBountyMutation.isPending ? 'Posting...' : 'Post Bounty (from treasury)'}
+                        </button>
+                      </div>
+                      {sheriffBountyMutation.isError && (
+                        <p className="text-xs text-realm-danger mt-1">{(sheriffBountyMutation.error as any)?.response?.data?.error ?? 'Failed'}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Sheriff: Travel Logs */}
+                  {(isSheriff || travelLogsData) && townId && (
+                    <div className="border-t border-realm-border pt-3">
+                      <button
+                        onClick={() => setShowTravelLogs(!showTravelLogs)}
+                        className="flex items-center gap-1.5 text-xs text-realm-text-muted hover:text-realm-text-secondary transition-colors"
+                      >
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showTravelLogs ? 'rotate-180' : ''}`} />
+                        <Route className="w-3 h-3" /> Travel Logs (last 7 days)
+                      </button>
+                      {showTravelLogs && travelLogsData?.logs && (
+                        <div className="mt-2 max-h-60 overflow-y-auto space-y-0.5">
+                          {travelLogsData.logs.length > 0 ? travelLogsData.logs.map(l => (
+                            <div key={l.id} className="flex items-center justify-between bg-realm-bg-800/50 rounded-sm px-2 py-1 text-[10px]">
+                              <span className="text-realm-text-secondary">
+                                <span className={l.action === 'ARRIVED' ? 'text-realm-success' : 'text-amber-400'}>{l.action}</span>
+                                {' '}{l.characterName} <span className="text-realm-text-muted">({l.characterRace})</span>
+                              </span>
+                              <span className="text-realm-text-muted">
+                                {l.action === 'ARRIVED' && l.fromTown ? `from ${l.fromTown}` : ''}
+                                {l.action === 'DEPARTED' && l.toTown ? `to ${l.toTown}` : ''}
+                                {' · '}{new Date(l.occurredAt).toLocaleString()}
+                              </span>
+                            </div>
+                          )) : (
+                            <p className="text-[10px] text-realm-text-muted italic">No travel activity recorded.</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </section>
 
@@ -1606,6 +1808,126 @@ export default function TownHallPage() {
                 </div>
               </section>
             </div>
+          </div>
+        )}
+
+        {/* ================================================================ */}
+        {/* Proclamations — visible to all                                  */}
+        {/* ================================================================ */}
+        {town && (
+          <div className="mt-10 border-t border-realm-border pt-8">
+            <section>
+              <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
+                <Megaphone className="w-5 h-5 text-realm-gold-400" />
+                Proclamations
+              </h2>
+
+              {/* Pinned proclamation */}
+              {(() => {
+                const pinned = proclamationsData?.proclamations?.find(p => p.isPinned && !p.isExpired);
+                const recent = (proclamationsData?.proclamations ?? []).filter(p => !p.isPinned);
+                return (
+                  <div className="space-y-3">
+                    {pinned && (
+                      <div className={`border rounded-lg p-4 ${pinned.isUrgent ? 'bg-amber-500/10 border-amber-500/30' : 'bg-realm-bg-700 border-realm-gold-500/30'}`}>
+                        <div className="flex items-start justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <Pin className="w-3.5 h-3.5 text-realm-gold-400" />
+                            <h3 className="text-sm font-display text-realm-text-primary">{pinned.title}</h3>
+                            {pinned.isUrgent && <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-amber-500/20 text-amber-400 border border-amber-500/30">URGENT</span>}
+                          </div>
+                        </div>
+                        <p className="text-xs text-realm-text-secondary whitespace-pre-wrap">{pinned.content}</p>
+                        <p className="text-[10px] text-realm-text-muted/70 mt-2">
+                          — {pinned.author.name}, {new Date(pinned.createdAt).toLocaleDateString()}
+                          {pinned.expiresAt && ` · Expires ${new Date(pinned.expiresAt).toLocaleDateString()}`}
+                        </p>
+                      </div>
+                    )}
+
+                    {recent.length > 0 && (
+                      <div className="space-y-2">
+                        {recent.slice(0, 5).map(p => (
+                          <div key={p.id} className={`bg-realm-bg-700/50 border border-realm-border/50 rounded-lg p-3 ${p.isExpired ? 'opacity-50' : ''}`}>
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-xs font-display text-realm-text-secondary">{p.title}</h3>
+                                {p.isUrgent && <span className="text-[9px] px-1 py-0.5 rounded-sm bg-amber-500/10 text-amber-400/70">URGENT</span>}
+                                {p.isExpired && <span className="text-[9px] px-1 py-0.5 rounded-sm bg-realm-text-muted/10 text-realm-text-muted">EXPIRED</span>}
+                              </div>
+                              {isMayor && !p.isPinned && !p.isExpired && (
+                                <button
+                                  onClick={() => pinProclamationMutation.mutate({ proclamationId: p.id })}
+                                  disabled={pinProclamationMutation.isPending}
+                                  className="px-2 py-0.5 text-[10px] border border-realm-gold-500/30 text-realm-gold-400/70 rounded-sm hover:bg-realm-gold-500/10"
+                                >
+                                  Pin
+                                </button>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-realm-text-muted line-clamp-2">{p.content}</p>
+                            <p className="text-[10px] text-realm-text-muted/60 mt-1">— {p.author.name}, {new Date(p.createdAt).toLocaleDateString()}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {!pinned && recent.length === 0 && (
+                      <div className="bg-realm-bg-700/50 border border-realm-border/50 rounded-lg p-4">
+                        <p className="text-sm text-realm-text-muted text-center">No proclamations issued yet.</p>
+                      </div>
+                    )}
+
+                    {/* Mayor: Issue new proclamation */}
+                    {isMayor && townId && (
+                      <div className="bg-realm-bg-700 border border-realm-gold-500/20 rounded-lg p-4 mt-3">
+                        <h3 className="text-sm font-display text-realm-gold-400 mb-3 flex items-center gap-2">
+                          <Megaphone className="w-4 h-4" />
+                          Issue Proclamation
+                        </h3>
+                        <div className="space-y-2 mb-3">
+                          <input
+                            type="text"
+                            value={procTitle}
+                            onChange={e => setProcTitle(e.target.value)}
+                            placeholder="Proclamation title"
+                            maxLength={PROCLAMATION_CONFIG.maxTitleLength}
+                            className="w-full px-2 py-1.5 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary placeholder:text-realm-text-muted/50"
+                          />
+                          <textarea
+                            value={procContent}
+                            onChange={e => setProcContent(e.target.value)}
+                            placeholder="Proclamation content"
+                            maxLength={PROCLAMATION_CONFIG.maxContentLength}
+                            rows={4}
+                            className="w-full px-2 py-1.5 text-xs bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-secondary placeholder:text-realm-text-muted/50 resize-none"
+                          />
+                          <label className="flex items-center gap-2 text-xs text-realm-text-muted">
+                            <input
+                              type="checkbox"
+                              checked={procUrgent}
+                              onChange={e => setProcUrgent(e.target.checked)}
+                              className="rounded accent-amber-500"
+                            />
+                            Urgent (yellow banner, 3-day expiry, 7-day cooldown)
+                          </label>
+                        </div>
+                        <button
+                          onClick={() => issueProclamationMutation.mutate({ townId, title: procTitle.trim(), content: procContent.trim(), isUrgent: procUrgent })}
+                          disabled={issueProclamationMutation.isPending || !procTitle.trim() || !procContent.trim()}
+                          className="w-full py-2 text-xs bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400 font-display rounded-sm hover:bg-realm-gold-500/20 transition-colors disabled:opacity-40"
+                        >
+                          {issueProclamationMutation.isPending ? 'Issuing...' : 'Issue Proclamation'}
+                        </button>
+                        {issueProclamationMutation.isError && (
+                          <p className="text-xs text-realm-danger mt-1">{(issueProclamationMutation.error as any)?.response?.data?.error ?? 'Failed'}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </section>
           </div>
         )}
 

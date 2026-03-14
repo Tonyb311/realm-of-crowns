@@ -2387,6 +2387,10 @@ export const noticeBoardPosts = pgTable("notice_board_posts", {
 	bountyStatus: text("bounty_status"), // 'OPEN', 'CLAIMED', 'COMPLETED', 'EXPIRED', 'REFUNDED'
 	claimedAt: timestamp("claimed_at", { precision: 3, mode: 'string' }),
 	completedAt: timestamp("completed_at", { precision: 3, mode: 'string' }),
+	// Moderation + official fields
+	isModerated: boolean("is_moderated").default(false).notNull(),
+	moderationReason: text("moderation_reason"),
+	isOfficial: boolean("is_official").default(false).notNull(),
 	// Common fields
 	postingFee: integer("posting_fee").default(0).notNull(),
 	isResident: boolean("is_resident").default(true).notNull(),
@@ -2786,5 +2790,54 @@ export const itemPriceCeilings = pgTable("item_price_ceilings", {
 		foreignColumns: [characters.id],
 		name: "item_price_ceilings_set_by_id_fkey"
 	}).onUpdate("cascade").onDelete("set null"),
+]);
+
+export const townProclamations = pgTable("town_proclamations", {
+	id: text().primaryKey().notNull(),
+	townId: text("town_id").notNull(),
+	authorId: text("author_id").notNull(),
+	title: text().notNull(),
+	content: text().notNull(),
+	isPinned: boolean("is_pinned").default(false).notNull(),
+	isUrgent: boolean("is_urgent").default(false).notNull(),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	expiresAt: timestamp("expires_at", { precision: 3, mode: 'string' }),
+}, (table) => [
+	index("town_proclamations_town_id_idx").using("btree", table.townId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+		columns: [table.townId],
+		foreignColumns: [towns.id],
+		name: "town_proclamations_town_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.authorId],
+		foreignColumns: [characters.id],
+		name: "town_proclamations_author_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+]);
+
+export const travelLogs = pgTable("travel_logs", {
+	id: text().primaryKey().notNull(),
+	townId: text("town_id").notNull(),
+	characterId: text("character_id").notNull(),
+	characterName: text("character_name").notNull(),
+	characterRace: text("character_race").notNull(),
+	action: text().notNull(), // 'ARRIVED' or 'DEPARTED'
+	fromTownId: text("from_town_id"),
+	toTownId: text("to_town_id"),
+	occurredAt: timestamp("occurred_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	index("travel_logs_town_id_idx").using("btree", table.townId.asc().nullsLast().op("text_ops")),
+	index("travel_logs_occurred_at_idx").using("btree", table.occurredAt.asc().nullsLast()),
+	foreignKey({
+		columns: [table.townId],
+		foreignColumns: [towns.id],
+		name: "travel_logs_town_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.characterId],
+		foreignColumns: [characters.id],
+		name: "travel_logs_character_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
 ]);
 
