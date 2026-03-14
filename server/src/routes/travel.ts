@@ -57,7 +57,7 @@ function calculateEtaTicks(currentNodeIndex: number, nodeCount: number, directio
   return Math.max(0, Math.ceil(nodesRemaining / Math.max(1, speedModifier)));
 }
 
-/** Get road improvement speed bonus from tradePolicy for a specific route. */
+/** Get road improvement speed bonus from tradePolicy for a specific route + road network upgrade. */
 async function getRoadImprovementBonus(originTownId: string, routeId: string): Promise<number> {
   const policy = await db.query.townPolicies.findFirst({
     where: eq(townPolicies.townId, originTownId),
@@ -65,12 +65,18 @@ async function getRoadImprovementBonus(originTownId: string, routeId: string): P
   });
   if (!policy) return 0;
   const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+  // Per-route project improvements
   const improvements = (tp.roadImprovements as any[]) ?? [];
   let bonus = 0;
   for (const imp of improvements) {
     if (imp.routeId === routeId) {
       bonus += imp.speedBonus ?? 0;
     }
+  }
+  // Road Network upgrade (applies to ALL adjacent routes)
+  const roadNetworkUpgrade = tp.roadNetworkUpgrade as { travelTimeReduction?: number } | undefined;
+  if (roadNetworkUpgrade?.travelTimeReduction) {
+    bonus += roadNetworkUpgrade.travelTimeReduction;
   }
   return bonus;
 }

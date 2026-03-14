@@ -176,6 +176,13 @@
       "when": 1775088000000,
       "tag": "0024_town_projects_sheriff",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1775174400000,
+      "tag": "0025_town_upgrades",
+      "breakpoints": true
     }
   ]
 }

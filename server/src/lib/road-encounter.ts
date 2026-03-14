@@ -590,6 +590,12 @@ export async function resolveRoadEncounter(
     encounterChance *= (1 - patrolReduction);
   }
 
+  // Apply road network upgrade danger reduction (from both origin and destination towns, take max)
+  const roadNetworkReduction = await getRoadNetworkDangerReduction(originTownId, destinationTownId);
+  if (roadNetworkReduction > 0) {
+    encounterChance *= (1 - roadNetworkReduction);
+  }
+
   const roll = Math.random();
   if (roll > encounterChance) {
     return { encountered: false };
@@ -1663,4 +1669,26 @@ async function getPatrolDangerReduction(originTownId: string, destinationTownId:
 
   // Cap at 0.50 (50% max reduction from patrols)
   return Math.min(0.50, totalReduction);
+}
+
+/**
+ * Get road network upgrade danger reduction for a route.
+ * Checks tradePolicy.roadNetworkUpgrade for both origin and destination towns.
+ * Takes the maximum (not additive) since the upgrade covers ALL adjacent routes.
+ */
+async function getRoadNetworkDangerReduction(originTownId: string, destinationTownId: string): Promise<number> {
+  const policies = await db.query.townPolicies.findMany({
+    where: inArray(townPolicies.townId, [originTownId, destinationTownId]),
+    columns: { tradePolicy: true },
+  });
+
+  let maxReduction = 0;
+  for (const policy of policies) {
+    const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+    const upgrade = tp.roadNetworkUpgrade as { roadDangerReduction?: number } | undefined;
+    if (upgrade?.roadDangerReduction) {
+      maxReduction = Math.max(maxReduction, upgrade.roadDangerReduction);
+    }
+  }
+  return maxReduction;
 }

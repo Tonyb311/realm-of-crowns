@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { characters, characterActiveEffects, characterEquipment, items, inventories, professionXp, towns, townResources, regions, regionBorders, diplomacyEvents, kingdoms, buildings, buildingConstructions, itemTemplates, priceHistories, caravans, elections, electionVotes, guilds, guildMembers, questProgress, quests, combatSessions, combatLogs, combatParticipants, notifications, racialAbilityCooldowns, changelingDisguises, achievements, playerAchievements, forgebornMaintenance, playerProfessions, craftingActions, recipes, travelRoutes, auctionCycles, marketListings, friends, laws, messages, electionCandidates, impeachments, impeachmentVotes, townTreasuries, councilMembers, townPolicies, abilities, characterAbilities, npcs, characterAppearances, users, exclusiveZones, gatheringActions, resources, wars, treaties, petitions, petitionSignatures, dailyActions, serviceActions, loans, serviceReputations, lawVotes, dailyReports, travelGroups, parties, travelNodes, travelGroupMembers, characterTravelStates, combatEncounterLogs, simulationRuns, groupTravelStates, partyMembers, partyInvitations, marketBuyOrders, tradeTransactions, ownedAssets, livestock, houses, houseStorage, jobs, monsters, droppedItems, deletionLogs, innMenu, noticeBoardPosts, gods, churchChapters, townMetrics, blackMarketListings, racialReputations, disputes, referendums, referendumVotes, townHistoryLog, townProjects } from "./tables";
+import { characters, characterActiveEffects, characterEquipment, items, inventories, professionXp, towns, townResources, regions, regionBorders, diplomacyEvents, kingdoms, buildings, buildingConstructions, itemTemplates, priceHistories, caravans, elections, electionVotes, guilds, guildMembers, questProgress, quests, combatSessions, combatLogs, combatParticipants, notifications, racialAbilityCooldowns, changelingDisguises, achievements, playerAchievements, forgebornMaintenance, playerProfessions, craftingActions, recipes, travelRoutes, auctionCycles, marketListings, friends, laws, messages, electionCandidates, impeachments, impeachmentVotes, townTreasuries, councilMembers, townPolicies, abilities, characterAbilities, npcs, characterAppearances, users, exclusiveZones, gatheringActions, resources, wars, treaties, petitions, petitionSignatures, dailyActions, serviceActions, loans, serviceReputations, lawVotes, dailyReports, travelGroups, parties, travelNodes, travelGroupMembers, characterTravelStates, combatEncounterLogs, simulationRuns, groupTravelStates, partyMembers, partyInvitations, marketBuyOrders, tradeTransactions, ownedAssets, livestock, houses, houseStorage, jobs, monsters, droppedItems, deletionLogs, innMenu, noticeBoardPosts, gods, churchChapters, townMetrics, blackMarketListings, racialReputations, disputes, referendums, referendumVotes, townHistoryLog, townProjects, townUpgrades } from "./tables";
 
 export const characterEquipmentRelations = relations(characterEquipment, ({one}) => ({
 	character: one(characters, {
@@ -1340,6 +1340,17 @@ export const townHistoryLogRelations = relations(townHistoryLog, ({one}) => ({
 	}),
 	involvedCharacter: one(characters, {
 		fields: [townHistoryLog.involvedCharacterId],
+		references: [characters.id],
+	}),
+}));
+
+export const townUpgradesRelations = relations(townUpgrades, ({one}) => ({
+	town: one(towns, {
+		fields: [townUpgrades.townId],
+		references: [towns.id],
+	}),
+	purchasedBy: one(characters, {
+		fields: [townUpgrades.purchasedById],
 		references: [characters.id],
 	}),
 }));

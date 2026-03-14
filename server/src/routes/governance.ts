@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../lib/db';
 import { eq, and, or, desc, sql, count, lte } from 'drizzle-orm';
-import { kingdoms, towns, laws, lawVotes, councilMembers, townPolicies, townTreasuries, wars, characters, townResources, buildings, townProjects, travelRoutes, townMetrics } from '@database/tables';
+import { kingdoms, towns, laws, lawVotes, councilMembers, townPolicies, townTreasuries, wars, characters, townResources, buildings, townProjects, travelRoutes, townMetrics, townUpgrades } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
@@ -11,7 +11,8 @@ import { emitGovernanceEvent } from '../socket/events';
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { logTownEvent } from '../services/history-logger';
-import { PROJECT_TYPES, EMERGENCY_SPENDING_TYPES, SHERIFF_PATROL_CONFIG, MAX_CONCURRENT_PROJECTS, MAX_EMERGENCY_PER_DAY, type ProjectType, type EmergencySpendingType } from '@shared/data/town-projects-config';
+import { PROJECT_TYPES, EMERGENCY_SPENDING_TYPES, SHERIFF_PATROL_CONFIG, MAX_CONCURRENT_PROJECTS, MAX_EMERGENCY_PER_DAY, UPGRADE_TYPES, DEGRADATION_THRESHOLD_DAYS, type ProjectType, type EmergencySpendingType, type UpgradeType } from '@shared/data/town-projects-config';
+import { getTownUpgradeEffects } from '../services/town-upgrades';
 import crypto from 'crypto';
 
 const router = Router();
@@ -371,7 +372,7 @@ router.get('/town-info/:townId', authGuard, characterGuard, requireTown, async (
         })),
         buildingCapacity: {
           used: usedSlots,
-          total: Math.max(20, Math.floor(townRow.population / 100)) + ((policy?.tradePolicy as any)?.buildingCapacityBonus ?? 0),
+          total: Math.max(20, Math.floor(townRow.population / 100)) + ((policy?.tradePolicy as any)?.buildingCapacityBonus ?? 0) + ((policy?.tradePolicy as any)?.upgradeCapacityBonus ?? 0),
         },
       },
     });
@@ -1234,6 +1235,329 @@ router.get('/sheriff-status/:townId', authGuard, characterGuard, async (req: Aut
   } catch (error) {
     if (handleDbError(error, res, 'governance-sheriff-status', req)) return;
     logRouteError(req, 500, 'Sheriff status error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// Town Upgrades (G2) — Purchase, View, Downgrade
+// ══════════════════════════════════════════════════════════════
+
+const purchaseUpgradeSchema = z.object({
+  townId: z.string().min(1),
+  upgradeType: z.enum(['PROSPERITY', 'BUILDING_CAPACITY', 'ROAD_NETWORK']),
+});
+
+const downgradeUpgradeSchema = z.object({
+  townId: z.string().min(1),
+  upgradeType: z.enum(['PROSPERITY', 'BUILDING_CAPACITY', 'ROAD_NETWORK']),
+});
+
+// POST /purchase-upgrade — Mayor purchases or upgrades a town upgrade
+router.post('/purchase-upgrade', authGuard, characterGuard, requireTown, validate(purchaseUpgradeSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId, upgradeType } = req.body;
+    const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling.' });
+    }
+
+    // Verify mayor
+    const town = await db.query.towns.findFirst({
+      where: eq(towns.id, townId),
+      with: { townTreasuries: true },
+    });
+    if (!town) return res.status(404).json({ error: 'Town not found' });
+    if (town.mayorId !== character.id) {
+      return res.status(403).json({ error: 'Only the mayor can purchase upgrades' });
+    }
+
+    const typeConfig = UPGRADE_TYPES[upgradeType as UpgradeType];
+    if (!typeConfig) return res.status(400).json({ error: 'Invalid upgrade type' });
+
+    // Check existing upgrade
+    const existing = await db.select().from(townUpgrades).where(
+      and(eq(townUpgrades.townId, townId), eq(townUpgrades.upgradeType, upgradeType))
+    );
+    const current = existing[0];
+
+    let cost: number;
+    let newTier: number;
+    let isRestore = false;
+
+    if (!current) {
+      // New purchase — Tier 1
+      newTier = 1;
+      cost = typeConfig.tiers[1].cost;
+    } else if (current.status === 'DEGRADING') {
+      // Restore — pay current tier cost, reset degrading
+      newTier = current.tier;
+      cost = typeConfig.tiers[current.tier as 1 | 2 | 3].cost;
+      isRestore = true;
+    } else if (current.tier >= 3) {
+      return res.status(400).json({ error: 'Already at maximum tier' });
+    } else {
+      // Upgrade to next tier
+      newTier = current.tier + 1;
+      cost = typeConfig.tiers[newTier as 1 | 2 | 3].cost;
+    }
+
+    // Verify treasury
+    const treasury = town.townTreasuries[0];
+    const balance = treasury?.balance ?? 0;
+    if (balance < cost) {
+      return res.status(400).json({ error: `Insufficient treasury. Need ${cost}g, have ${balance}g` });
+    }
+
+    const tierConfig = typeConfig.tiers[newTier as 1 | 2 | 3];
+
+    // Transaction: deduct cost, upsert upgrade, apply effects
+    const [upgrade] = await db.transaction(async (tx) => {
+      // Deduct cost
+      await tx.update(townTreasuries)
+        .set({ balance: sql`${townTreasuries.balance} - ${cost}` })
+        .where(eq(townTreasuries.townId, townId));
+
+      // Apply effect deltas for metrics bonus
+      const oldTier = current?.tier ?? 0;
+      const oldEffects = oldTier > 0 ? (typeConfig.tiers[oldTier as 1 | 2 | 3]?.effects ?? {}) : {};
+      const newEffects = tierConfig.effects;
+      const oldMetricsBonus = ('allMetricsBonus' in oldEffects ? (oldEffects as any).allMetricsBonus : 0) as number;
+      const newMetricsBonus = ('allMetricsBonus' in newEffects ? (newEffects as any).allMetricsBonus : 0) as number;
+      const metricsDelta = newMetricsBonus - (isRestore ? 0 : oldMetricsBonus);
+
+      // Apply metrics bonus delta via projectModifier (only if changing and not already at this tier)
+      if (metricsDelta !== 0) {
+        await tx.update(townMetrics)
+          .set({
+            projectModifier: sql`${townMetrics.projectModifier} + ${metricsDelta}`,
+            effectiveValue: sql`LEAST(100, GREATEST(0, ${townMetrics.baseValue} + ${townMetrics.projectModifier} + ${metricsDelta} + ${townMetrics.modifier}))`,
+          })
+          .where(eq(townMetrics.townId, townId));
+      }
+
+      // Apply building capacity delta
+      const oldSlots = ('buildingSlots' in oldEffects ? (oldEffects as any).buildingSlots : 0) as number;
+      const newSlots = ('buildingSlots' in newEffects ? (newEffects as any).buildingSlots : 0) as number;
+      const slotsDelta = newSlots - (isRestore ? 0 : oldSlots);
+      if (slotsDelta !== 0) {
+        const policy = await tx.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId) });
+        if (policy) {
+          const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+          tp.upgradeCapacityBonus = (tp.upgradeCapacityBonus ?? 0) + slotsDelta;
+          await tx.update(townPolicies).set({ tradePolicy: tp }).where(eq(townPolicies.townId, townId));
+        }
+      }
+
+      // Apply road network to tradePolicy
+      const oldTravel = ('travelTimeReduction' in oldEffects ? (oldEffects as any).travelTimeReduction : 0) as number;
+      const newTravel = ('travelTimeReduction' in newEffects ? (newEffects as any).travelTimeReduction : 0) as number;
+      const oldDanger = ('roadDangerReduction' in oldEffects ? (oldEffects as any).roadDangerReduction : 0) as number;
+      const newDanger = ('roadDangerReduction' in newEffects ? (newEffects as any).roadDangerReduction : 0) as number;
+      if (newTravel !== oldTravel || newDanger !== oldDanger || isRestore) {
+        const policy = await tx.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId) });
+        if (policy) {
+          const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+          tp.roadNetworkUpgrade = { travelTimeReduction: newTravel, roadDangerReduction: newDanger };
+          await tx.update(townPolicies).set({ tradePolicy: tp }).where(eq(townPolicies.townId, townId));
+        }
+      }
+
+      // Upsert upgrade row
+      if (!current) {
+        return tx.insert(townUpgrades).values({
+          id: crypto.randomUUID(),
+          townId,
+          upgradeType,
+          tier: newTier,
+          status: 'ACTIVE',
+          dailyMaintenance: tierConfig.maintenance,
+          degradingDays: 0,
+          purchasedById: character.id,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }).returning();
+      } else {
+        return tx.update(townUpgrades)
+          .set({
+            tier: newTier,
+            status: 'ACTIVE',
+            dailyMaintenance: tierConfig.maintenance,
+            degradingDays: 0,
+            purchasedById: character.id,
+            updatedAt: new Date().toISOString(),
+          })
+          .where(eq(townUpgrades.id, current.id))
+          .returning();
+      }
+    });
+
+    const action = isRestore ? 'Restored' : (!current ? 'Purchased' : 'Upgraded');
+    logTownEvent(townId, 'GOVERNANCE', `Upgrade ${action}: ${typeConfig.name} Tier ${newTier}`, `Mayor ${character.name} ${action.toLowerCase()} ${typeConfig.name} to Tier ${newTier} for ${cost}g`, character.id).catch(() => {});
+
+    return res.status(201).json({ upgrade, cost, action });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-purchase-upgrade', req)) return;
+    logRouteError(req, 500, 'Purchase upgrade error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /upgrades/:townId — View all upgrades for a town
+router.get('/upgrades/:townId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId } = req.params;
+
+    const upgrades = await db.select().from(townUpgrades).where(eq(townUpgrades.townId, townId));
+
+    // Enrich with config details
+    const enriched = upgrades.map(u => {
+      const typeConfig = UPGRADE_TYPES[u.upgradeType as UpgradeType];
+      const tierConfig = typeConfig?.tiers[u.tier as 1 | 2 | 3];
+      return {
+        ...u,
+        name: typeConfig?.name ?? u.upgradeType,
+        description: typeConfig?.description ?? '',
+        effects: tierConfig?.effects ?? {},
+        nextTier: u.tier < 3 ? {
+          tier: u.tier + 1,
+          cost: typeConfig?.tiers[(u.tier + 1) as 1 | 2 | 3]?.cost ?? 0,
+          maintenance: typeConfig?.tiers[(u.tier + 1) as 1 | 2 | 3]?.maintenance ?? 0,
+          effects: typeConfig?.tiers[(u.tier + 1) as 1 | 2 | 3]?.effects ?? {},
+        } : null,
+      };
+    });
+
+    // Include available upgrade types not yet purchased
+    const purchasedTypes = new Set(upgrades.map(u => u.upgradeType));
+    const available = Object.entries(UPGRADE_TYPES)
+      .filter(([key]) => !purchasedTypes.has(key))
+      .map(([key, config]) => ({
+        upgradeType: key,
+        name: config.name,
+        description: config.description,
+        tier1Cost: config.tiers[1].cost,
+        tier1Maintenance: config.tiers[1].maintenance,
+        tier1Effects: config.tiers[1].effects,
+      }));
+
+    // Compute total maintenance
+    const totalMaintenance = upgrades.reduce((sum, u) => sum + u.dailyMaintenance, 0);
+
+    return res.json({ upgrades: enriched, available, totalMaintenance });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-upgrades', req)) return;
+    logRouteError(req, 500, 'View upgrades error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /downgrade-upgrade — Mayor voluntarily downgrades (no refund)
+router.post('/downgrade-upgrade', authGuard, characterGuard, requireTown, validate(downgradeUpgradeSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId, upgradeType } = req.body;
+    const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling.' });
+    }
+
+    // Verify mayor
+    const town = await db.query.towns.findFirst({ where: eq(towns.id, townId) });
+    if (!town) return res.status(404).json({ error: 'Town not found' });
+    if (town.mayorId !== character.id) {
+      return res.status(403).json({ error: 'Only the mayor can downgrade upgrades' });
+    }
+
+    const typeConfig = UPGRADE_TYPES[upgradeType as UpgradeType];
+    if (!typeConfig) return res.status(400).json({ error: 'Invalid upgrade type' });
+
+    const existing = await db.select().from(townUpgrades).where(
+      and(eq(townUpgrades.townId, townId), eq(townUpgrades.upgradeType, upgradeType))
+    );
+    const current = existing[0];
+    if (!current) {
+      return res.status(400).json({ error: 'No upgrade of this type exists' });
+    }
+
+    const oldTier = current.tier;
+    const oldEffects = typeConfig.tiers[oldTier as 1 | 2 | 3].effects;
+
+    await db.transaction(async (tx) => {
+      if (oldTier <= 1) {
+        // Remove entirely
+        await tx.delete(townUpgrades).where(eq(townUpgrades.id, current.id));
+      } else {
+        const newTier = oldTier - 1;
+        const newTierConfig = typeConfig.tiers[newTier as 1 | 2 | 3];
+        await tx.update(townUpgrades).set({
+          tier: newTier,
+          dailyMaintenance: newTierConfig.maintenance,
+          degradingDays: 0,
+          status: 'ACTIVE',
+          updatedAt: new Date().toISOString(),
+        }).where(eq(townUpgrades.id, current.id));
+      }
+
+      // Revert effects delta
+      const newTier = oldTier <= 1 ? 0 : oldTier - 1;
+      const newEffects = newTier > 0 ? (typeConfig.tiers[newTier as 1 | 2 | 3]?.effects ?? {}) : {};
+
+      // Metrics delta
+      const oldMetrics = ('allMetricsBonus' in oldEffects ? (oldEffects as any).allMetricsBonus : 0) as number;
+      const newMetrics = ('allMetricsBonus' in newEffects ? (newEffects as any).allMetricsBonus : 0) as number;
+      const metricsDelta = newMetrics - oldMetrics;
+      if (metricsDelta !== 0) {
+        await tx.update(townMetrics).set({
+          projectModifier: sql`${townMetrics.projectModifier} + ${metricsDelta}`,
+          effectiveValue: sql`LEAST(100, GREATEST(0, ${townMetrics.baseValue} + ${townMetrics.projectModifier} + ${metricsDelta} + ${townMetrics.modifier}))`,
+        }).where(eq(townMetrics.townId, townId));
+      }
+
+      // Building capacity delta
+      const oldSlots = ('buildingSlots' in oldEffects ? (oldEffects as any).buildingSlots : 0) as number;
+      const newSlots = ('buildingSlots' in newEffects ? (newEffects as any).buildingSlots : 0) as number;
+      const slotsDelta = newSlots - oldSlots;
+      if (slotsDelta !== 0) {
+        const policy = await tx.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId) });
+        if (policy) {
+          const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+          tp.upgradeCapacityBonus = Math.max(0, (tp.upgradeCapacityBonus ?? 0) + slotsDelta);
+          await tx.update(townPolicies).set({ tradePolicy: tp }).where(eq(townPolicies.townId, townId));
+        }
+      }
+
+      // Road network
+      if (newTier === 0) {
+        const policy = await tx.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId) });
+        if (policy) {
+          const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+          delete tp.roadNetworkUpgrade;
+          await tx.update(townPolicies).set({ tradePolicy: tp }).where(eq(townPolicies.townId, townId));
+        }
+      } else {
+        const newRoadEffects = typeConfig.tiers[newTier as 1 | 2 | 3]?.effects ?? {};
+        const newTravel = ('travelTimeReduction' in newRoadEffects ? (newRoadEffects as any).travelTimeReduction : 0) as number;
+        const newDanger = ('roadDangerReduction' in newRoadEffects ? (newRoadEffects as any).roadDangerReduction : 0) as number;
+        if (newTravel > 0 || newDanger > 0) {
+          const policy = await tx.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId) });
+          if (policy) {
+            const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+            tp.roadNetworkUpgrade = { travelTimeReduction: newTravel, roadDangerReduction: newDanger };
+            await tx.update(townPolicies).set({ tradePolicy: tp }).where(eq(townPolicies.townId, townId));
+          }
+        }
+      }
+    });
+
+    const action = oldTier <= 1 ? 'removed' : `downgraded to Tier ${oldTier - 1}`;
+    logTownEvent(townId, 'GOVERNANCE', `Upgrade Downgraded: ${typeConfig.name}`, `Mayor ${character.name} ${action} ${typeConfig.name}. No refund.`, character.id).catch(() => {});
+
+    return res.json({ message: `${typeConfig.name} ${action}` });
+  } catch (error) {
+    if (handleDbError(error, res, 'governance-downgrade-upgrade', req)) return;
+    logRouteError(req, 500, 'Downgrade upgrade error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

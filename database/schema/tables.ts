@@ -1,4 +1,4 @@
-import { pgTable, varchar, timestamp, text, integer, real, uniqueIndex, index, foreignKey, doublePrecision, jsonb, date, boolean, type AnyPgColumn } from "drizzle-orm/pg-core"
+import { pgTable, varchar, timestamp, text, integer, real, uniqueIndex, unique, index, foreignKey, doublePrecision, jsonb, date, boolean, type AnyPgColumn } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 import { actionStatus, beastClan, biomeType, buildingType, combatSessionStatus, combatStance, combatType, consumableSourceType, dailyActionStatus, dailyActionType, diplomacyActionType, dragonBloodline, electionPhase, electionStatus, electionType, elementalType, equipSlot, foodPriority, friendStatus, hungerState, impeachmentStatus, itemRarity, itemType, lawStatus, loanStatus, logLevel, messageChannel, npcRole, petitionStatus, professionTier, professionType, questType, race, raceTier, relationStatus, resourceType, targetSelectionStrategy, travelEngagementMode, treatyStatus, treatyType, warStatus } from './enums'
 
@@ -2717,6 +2717,36 @@ export const townHistoryLog = pgTable("town_history_log", {
 		columns: [table.involvedCharacterId],
 		foreignColumns: [characters.id],
 		name: "town_history_log_involved_character_id_fkey"
+	}).onUpdate("cascade").onDelete("set null"),
+]);
+
+// ============================================================
+// Town Upgrades (G2 — permanent upgrades with daily maintenance)
+// ============================================================
+
+export const townUpgrades = pgTable("town_upgrades", {
+	id: text().primaryKey().notNull(),
+	townId: text("town_id").notNull(),
+	upgradeType: text("upgrade_type").notNull(), // 'PROSPERITY', 'BUILDING_CAPACITY', 'ROAD_NETWORK'
+	tier: integer().default(1).notNull(),
+	status: text().default('ACTIVE').notNull(), // 'ACTIVE', 'DEGRADING'
+	dailyMaintenance: integer("daily_maintenance").notNull(),
+	degradingDays: integer("degrading_days").default(0).notNull(),
+	purchasedById: text("purchased_by_id"),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	unique("town_upgrades_town_id_upgrade_type_unique").on(table.townId, table.upgradeType),
+	index("town_upgrades_town_id_idx").using("btree", table.townId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+		columns: [table.townId],
+		foreignColumns: [towns.id],
+		name: "town_upgrades_town_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.purchasedById],
+		foreignColumns: [characters.id],
+		name: "town_upgrades_purchased_by_id_fkey"
 	}).onUpdate("cascade").onDelete("set null"),
 ]);
 

@@ -119,3 +119,39 @@ export const SHERIFF_PATROL_CONFIG = {
   minDailyBudget: 10,
   maxDailyBudget: 100,
 } as const;
+
+// ── Town Upgrades (G2) ─────────────────────────────────────
+
+export const UPGRADE_TYPES = {
+  PROSPERITY: {
+    name: 'Prosperity',
+    description: 'Improve town metrics and production yields',
+    tiers: {
+      1: { cost: 500, maintenance: 10, effects: { allMetricsBonus: 5, gatheringYieldPercent: 0.05 } },
+      2: { cost: 1000, maintenance: 25, effects: { allMetricsBonus: 10, gatheringYieldPercent: 0.10, craftingQualityPercent: 0.05 } },
+      3: { cost: 2000, maintenance: 50, effects: { allMetricsBonus: 15, gatheringYieldPercent: 0.15, craftingQualityPercent: 0.10 } },
+    },
+  },
+  BUILDING_CAPACITY: {
+    name: 'Building Capacity',
+    description: 'Expand the number of building slots in town',
+    tiers: {
+      1: { cost: 300, maintenance: 5, effects: { buildingSlots: 5 } },
+      2: { cost: 600, maintenance: 15, effects: { buildingSlots: 10 } },
+      3: { cost: 1200, maintenance: 30, effects: { buildingSlots: 15 } },
+    },
+  },
+  ROAD_NETWORK: {
+    name: 'Road Network',
+    description: 'Improve travel speed and safety on adjacent routes',
+    tiers: {
+      1: { cost: 400, maintenance: 8, effects: { travelTimeReduction: 0.10 } },
+      2: { cost: 800, maintenance: 20, effects: { travelTimeReduction: 0.20, roadDangerReduction: 0.05 } },
+      3: { cost: 1600, maintenance: 40, effects: { travelTimeReduction: 0.30, roadDangerReduction: 0.10 } },
+    },
+  },
+} as const;
+
+export type UpgradeType = keyof typeof UPGRADE_TYPES;
+
+export const DEGRADATION_THRESHOLD_DAYS = 3;

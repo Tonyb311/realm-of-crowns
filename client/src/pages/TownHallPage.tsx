@@ -33,7 +33,7 @@ import { RealmModal } from '../components/ui/RealmModal';
 import { PageHeader } from '../components/ui/realm-index';
 import { buildingTypeLabel } from '@shared/data/building-labels';
 import { METRIC_LABELS, type TownMetricType } from '@shared/data/town-metrics-config';
-import { PROJECT_TYPES, EMERGENCY_SPENDING_TYPES, SHERIFF_PATROL_CONFIG, PROJECT_CATEGORIES, type ProjectType, type EmergencySpendingType } from '@shared/data/town-projects-config';
+import { PROJECT_TYPES, EMERGENCY_SPENDING_TYPES, SHERIFF_PATROL_CONFIG, PROJECT_CATEGORIES, UPGRADE_TYPES, DEGRADATION_THRESHOLD_DAYS, type ProjectType, type EmergencySpendingType, type UpgradeType } from '@shared/data/town-projects-config';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -173,6 +173,26 @@ interface SheriffStatus {
   patrols: { routeId: string; expiresAt: string; dangerReduction: number; source: string }[];
 }
 
+interface TownUpgrade {
+  id: string;
+  townId: string;
+  upgradeType: string;
+  tier: number;
+  status: string;
+  dailyMaintenance: number;
+  degradingDays: number;
+  name: string;
+  description: string;
+  effects: Record<string, number>;
+  nextTier: { tier: number; cost: number; maintenance: number; effects: Record<string, number> } | null;
+}
+
+interface UpgradesResponse {
+  upgrades: TownUpgrade[];
+  available: { upgradeType: string; name: string; description: string; tier1Cost: number; tier1Maintenance: number; tier1Effects: Record<string, number> }[];
+  totalMaintenance: number;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -195,6 +215,25 @@ function getMetricTextColor(value: number): string {
   if (value > 60) return 'text-realm-success';
   if (value >= 30) return 'text-amber-400';
   return 'text-realm-danger';
+}
+
+function formatEffectLabel(key: string): string {
+  const labels: Record<string, string> = {
+    allMetricsBonus: 'All Metrics',
+    gatheringYieldPercent: 'Gathering Yield',
+    craftingQualityPercent: 'Crafting Quality',
+    buildingSlots: 'Building Slots',
+    travelTimeReduction: 'Travel Speed',
+    roadDangerReduction: 'Road Safety',
+  };
+  return labels[key] ?? key;
+}
+
+function formatEffectValue(key: string, val: number): string {
+  if (key.includes('Percent') || key.includes('Reduction')) {
+    return `+${(val * 100).toFixed(0)}%`;
+  }
+  return `+${val}`;
 }
 
 const PHASE_COLORS: Record<string, string> = {
@@ -358,6 +397,37 @@ export default function TownHallPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['governance', 'sheriff-status'] });
+    },
+  });
+
+  // Town upgrades
+  const { data: upgradesData } = useQuery<UpgradesResponse>({
+    queryKey: ['governance', 'upgrades', townId],
+    queryFn: async () => (await api.get(`/governance/upgrades/${townId}`)).data,
+    enabled: !!townId,
+  });
+
+  const purchaseUpgradeMutation = useMutation({
+    mutationFn: async (data: { townId: string; upgradeType: string }) => {
+      return (await api.post('/governance/purchase-upgrade', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['governance', 'upgrades'] });
+      queryClient.invalidateQueries({ queryKey: ['governance', 'town-info'] });
+      queryClient.invalidateQueries({ queryKey: ['town-metrics'] });
+    },
+  });
+
+  const [showDowngradeConfirm, setShowDowngradeConfirm] = useState<string | null>(null);
+  const downgradeUpgradeMutation = useMutation({
+    mutationFn: async (data: { townId: string; upgradeType: string }) => {
+      return (await api.post('/governance/downgrade-upgrade', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['governance', 'upgrades'] });
+      queryClient.invalidateQueries({ queryKey: ['governance', 'town-info'] });
+      queryClient.invalidateQueries({ queryKey: ['town-metrics'] });
+      setShowDowngradeConfirm(null);
     },
   });
 
@@ -1199,6 +1269,214 @@ export default function TownHallPage() {
                           Set
                         </button>
                       </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* ============================================================ */}
+              {/* Town Upgrades (G2) */}
+              {/* ============================================================ */}
+              <section>
+                <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-realm-gold-400" />
+                  Town Upgrades
+                </h2>
+
+                {/* Maintenance Summary */}
+                {upgradesData && upgradesData.upgrades.length > 0 && (
+                  <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4 mb-4">
+                    <div className="grid grid-cols-3 gap-3 text-sm">
+                      <div className="bg-realm-bg-800 rounded-sm p-2 text-center">
+                        <p className="text-[10px] text-realm-text-muted">Daily Maintenance</p>
+                        <p className="text-xs text-realm-gold-400 font-semibold">{upgradesData.totalMaintenance}g/day</p>
+                      </div>
+                      <div className="bg-realm-bg-800 rounded-sm p-2 text-center">
+                        <p className="text-[10px] text-realm-text-muted">Treasury</p>
+                        <p className="text-xs text-realm-gold-400 font-semibold">{(town?.treasury ?? 0).toLocaleString()}g</p>
+                      </div>
+                      <div className="bg-realm-bg-800 rounded-sm p-2 text-center">
+                        <p className="text-[10px] text-realm-text-muted">Runway</p>
+                        {(() => {
+                          const days = upgradesData.totalMaintenance > 0
+                            ? Math.floor((town?.treasury ?? 0) / upgradesData.totalMaintenance)
+                            : Infinity;
+                          return (
+                            <p className={`text-xs font-semibold ${days < 5 ? 'text-realm-danger' : days < 10 ? 'text-amber-400' : 'text-realm-success'}`}>
+                              {days === Infinity ? '∞' : `${days} days`}
+                            </p>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                    {(() => {
+                      const days = upgradesData.totalMaintenance > 0
+                        ? Math.floor((town?.treasury ?? 0) / upgradesData.totalMaintenance)
+                        : Infinity;
+                      if (days < 5 && days !== Infinity) {
+                        return (
+                          <div className="mt-2 px-3 py-1.5 bg-realm-danger/10 border border-realm-danger/30 rounded-sm">
+                            <p className="text-[11px] text-realm-danger flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              Warning: Less than 5 days of maintenance runway! Upgrades will degrade if treasury runs out.
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                )}
+
+                {/* Upgrade Track Cards */}
+                <div className="space-y-3">
+                  {/* Active upgrades */}
+                  {(upgradesData?.upgrades ?? []).map(upgrade => {
+                    const tierDots = [1, 2, 3];
+                    return (
+                      <div key={upgrade.upgradeType} className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h3 className="text-sm font-display text-realm-text-primary">{upgrade.name}</h3>
+                            <p className="text-[11px] text-realm-text-muted">{upgrade.description}</p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {tierDots.map(t => (
+                              <div
+                                key={t}
+                                className={`w-2.5 h-2.5 rounded-full border ${
+                                  t <= upgrade.tier
+                                    ? 'bg-realm-gold-400 border-realm-gold-500'
+                                    : 'bg-realm-bg-900 border-realm-border'
+                                }`}
+                              />
+                            ))}
+                            <span className="text-[10px] text-realm-text-muted ml-1">Tier {upgrade.tier}</span>
+                          </div>
+                        </div>
+
+                        {/* Status */}
+                        {upgrade.status === 'DEGRADING' && (
+                          <div className="mb-2 px-3 py-1.5 bg-realm-danger/10 border border-realm-danger/30 rounded-sm">
+                            <p className="text-[11px] text-realm-danger flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              DEGRADING — {upgrade.degradingDays}/{DEGRADATION_THRESHOLD_DAYS} days until tier drop!
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Effects */}
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {Object.entries(upgrade.effects).map(([key, val]) => (
+                            <span key={key} className="text-[10px] bg-realm-bg-800 border border-realm-border rounded-sm px-2 py-0.5 text-realm-text-secondary">
+                              {formatEffectLabel(key)}: {formatEffectValue(key, val as number)}
+                            </span>
+                          ))}
+                        </div>
+
+                        {/* Maintenance */}
+                        <p className="text-[10px] text-realm-text-muted mb-3">
+                          Maintenance: <span className="text-realm-gold-400">{upgrade.dailyMaintenance}g/day</span>
+                        </p>
+
+                        {/* Mayor Controls */}
+                        {isMayor && townId && (
+                          <div className="flex gap-2">
+                            {/* Upgrade / Restore button */}
+                            {upgrade.status === 'DEGRADING' ? (
+                              <button
+                                onClick={() => purchaseUpgradeMutation.mutate({ townId, upgradeType: upgrade.upgradeType })}
+                                disabled={purchaseUpgradeMutation.isPending}
+                                className="flex-1 py-1.5 text-[11px] bg-realm-teal-300/10 border border-realm-teal-300/30 text-realm-teal-300 font-display rounded-sm hover:bg-realm-teal-300/20 transition-colors disabled:opacity-40"
+                              >
+                                Restore ({UPGRADE_TYPES[upgrade.upgradeType as UpgradeType]?.tiers[upgrade.tier as 1 | 2 | 3]?.cost ?? 0}g)
+                              </button>
+                            ) : upgrade.nextTier ? (
+                              <button
+                                onClick={() => purchaseUpgradeMutation.mutate({ townId, upgradeType: upgrade.upgradeType })}
+                                disabled={purchaseUpgradeMutation.isPending}
+                                className="flex-1 py-1.5 text-[11px] bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400 font-display rounded-sm hover:bg-realm-gold-500/20 transition-colors disabled:opacity-40"
+                              >
+                                Upgrade to Tier {upgrade.nextTier.tier} ({upgrade.nextTier.cost}g)
+                              </button>
+                            ) : (
+                              <span className="flex-1 py-1.5 text-[11px] text-realm-text-muted text-center">Max Tier</span>
+                            )}
+
+                            {/* Downgrade button */}
+                            {showDowngradeConfirm === upgrade.upgradeType ? (
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => downgradeUpgradeMutation.mutate({ townId, upgradeType: upgrade.upgradeType })}
+                                  disabled={downgradeUpgradeMutation.isPending}
+                                  className="px-2 py-1.5 text-[10px] bg-realm-danger/20 border border-realm-danger/40 text-realm-danger rounded-sm hover:bg-realm-danger/30"
+                                >
+                                  Confirm
+                                </button>
+                                <button
+                                  onClick={() => setShowDowngradeConfirm(null)}
+                                  className="px-2 py-1.5 text-[10px] border border-realm-border text-realm-text-muted rounded-sm hover:bg-realm-bg-800"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setShowDowngradeConfirm(upgrade.upgradeType)}
+                                className="px-3 py-1.5 text-[10px] border border-realm-danger/30 text-realm-danger/70 rounded-sm hover:bg-realm-danger/10 transition-colors"
+                              >
+                                {upgrade.tier <= 1 ? 'Remove' : 'Downgrade'}
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Mutation errors */}
+                        {purchaseUpgradeMutation.isError && (
+                          <p className="text-xs text-realm-danger mt-1">{(purchaseUpgradeMutation.error as any)?.response?.data?.error ?? 'Failed'}</p>
+                        )}
+                        {downgradeUpgradeMutation.isError && (
+                          <p className="text-xs text-realm-danger mt-1">{(downgradeUpgradeMutation.error as any)?.response?.data?.error ?? 'Failed'}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Available (not yet purchased) upgrades */}
+                  {isMayor && townId && (upgradesData?.available ?? []).map(avail => (
+                    <div key={avail.upgradeType} className="bg-realm-bg-700/50 border border-realm-border/50 rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <h3 className="text-sm font-display text-realm-text-secondary">{avail.name}</h3>
+                          <p className="text-[11px] text-realm-text-muted">{avail.description}</p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3].map(t => (
+                            <div key={t} className="w-2.5 h-2.5 rounded-full border bg-realm-bg-900 border-realm-border" />
+                          ))}
+                          <span className="text-[10px] text-realm-text-muted ml-1">Not purchased</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {Object.entries(avail.tier1Effects).map(([key, val]) => (
+                          <span key={key} className="text-[10px] bg-realm-bg-800/50 border border-realm-border/50 rounded-sm px-2 py-0.5 text-realm-text-muted">
+                            {formatEffectLabel(key)}: {formatEffectValue(key, val as number)}
+                          </span>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => purchaseUpgradeMutation.mutate({ townId, upgradeType: avail.upgradeType })}
+                        disabled={purchaseUpgradeMutation.isPending}
+                        className="w-full py-2 text-xs bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400 font-display rounded-sm hover:bg-realm-gold-500/20 transition-colors disabled:opacity-40"
+                      >
+                        Purchase Tier 1 ({avail.tier1Cost}g, {avail.tier1Maintenance}g/day)
+                      </button>
+                    </div>
+                  ))}
+
+                  {!upgradesData?.upgrades?.length && !isMayor && (
+                    <div className="bg-realm-bg-700/50 border border-realm-border/50 rounded-lg p-4">
+                      <p className="text-sm text-realm-text-muted text-center">No town upgrades purchased yet.</p>
                     </div>
                   )}
                 </div>

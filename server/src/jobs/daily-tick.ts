@@ -13,9 +13,9 @@ import {
   laws, townTreasuries, townPolicies, tradeTransactions, caravans,
   elections, electionVotes, electionCandidates, impeachments, towns, kingdoms,
   worldEvents, combatEncounterLogs, notifications, recipes,
-  ownedAssets, livestock, jobs, houses, houseStorage, noticeBoardPosts, churchChapters, gods, townMetrics, townProjects,
+  ownedAssets, livestock, jobs, houses, houseStorage, noticeBoardPosts, churchChapters, gods, townMetrics, townProjects, townUpgrades,
 } from '@database/tables';
-import { PROJECT_TYPES, type ProjectType } from '@shared/data/town-projects-config';
+import { PROJECT_TYPES, UPGRADE_TYPES, DEGRADATION_THRESHOLD_DAYS, type ProjectType, type UpgradeType } from '@shared/data/town-projects-config';
 import { processSpoilage, processAutoConsumption, getHungerModifier, processRevenantSustenance, processForgebornMaintenance } from '../services/food-system';
 import { resolveNodePvE, resolveNodePvP } from '../services/tick-combat-resolver';
 import { createDailyReport, compileReport } from '../services/daily-report';
@@ -30,6 +30,7 @@ import { checkAchievements } from '../services/achievements';
 import { onResourceGather } from '../services/quest-triggers';
 import { processServiceNpcIncome } from './service-npc-income';
 import { logTownEvent } from '../services/history-logger';
+import { getTownUpgradeEffects } from '../services/town-upgrades';
 import { cleanupExpiredDrops } from '../routes/inventory';
 import { processLoans } from './loan-processing';
 import { processReputationDecay } from './reputation-decay';
@@ -1521,6 +1522,181 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   const now = new Date();
 
   // -----------------------------------------------------------------------
+  // Step 7.5: Town Upgrade Maintenance + Degradation
+  // -----------------------------------------------------------------------
+  await runStep('Town Upgrade Maintenance', 7.5, async () => {
+    // Get all towns that have upgrades
+    const allUpgrades = await db.select().from(townUpgrades);
+    if (allUpgrades.length === 0) return;
+
+    // Group by townId
+    const byTown = new Map<string, typeof allUpgrades>();
+    for (const u of allUpgrades) {
+      const list = byTown.get(u.townId) ?? [];
+      list.push(u);
+      byTown.set(u.townId, list);
+    }
+
+    let maintained = 0;
+    let degraded = 0;
+    let dropped = 0;
+
+    for (const [townId, upgrades] of byTown) {
+      const totalMaintenance = upgrades.reduce((sum, u) => sum + u.dailyMaintenance, 0);
+
+      // Check treasury
+      const treasury = await db.query.townTreasuries.findFirst({
+        where: eq(townTreasuries.townId, townId),
+      });
+      const balance = treasury?.balance ?? 0;
+
+      if (balance >= totalMaintenance) {
+        // Can afford — deduct and reset all to ACTIVE
+        await db.update(townTreasuries)
+          .set({ balance: sql`${townTreasuries.balance} - ${totalMaintenance}` })
+          .where(eq(townTreasuries.townId, townId));
+
+        for (const u of upgrades) {
+          if (u.status !== 'ACTIVE' || u.degradingDays > 0) {
+            await db.update(townUpgrades)
+              .set({ status: 'ACTIVE', degradingDays: 0, updatedAt: new Date().toISOString() })
+              .where(eq(townUpgrades.id, u.id));
+          }
+        }
+        maintained++;
+        console.log(`[DailyTick]   Town ${townId}: deducted ${totalMaintenance}g maintenance for ${upgrades.length} upgrade(s)`);
+      } else {
+        // Cannot afford — ALL upgrades degrade
+        for (const u of upgrades) {
+          const newDegradingDays = u.degradingDays + 1;
+
+          if (newDegradingDays >= DEGRADATION_THRESHOLD_DAYS) {
+            // Drop one tier
+            const typeConfig = UPGRADE_TYPES[u.upgradeType as UpgradeType];
+            const oldTier = u.tier;
+            const oldEffects = typeConfig?.tiers[oldTier as 1 | 2 | 3]?.effects ?? {};
+
+            if (oldTier <= 1) {
+              // Remove entirely
+              await db.delete(townUpgrades).where(eq(townUpgrades.id, u.id));
+
+              // Revert all effects
+              const metricsBonus = ('allMetricsBonus' in oldEffects ? (oldEffects as any).allMetricsBonus : 0) as number;
+              if (metricsBonus > 0) {
+                await db.update(townMetrics).set({
+                  projectModifier: sql`${townMetrics.projectModifier} - ${metricsBonus}`,
+                  effectiveValue: sql`LEAST(100, GREATEST(0, ${townMetrics.baseValue} + ${townMetrics.projectModifier} - ${metricsBonus} + ${townMetrics.modifier}))`,
+                }).where(eq(townMetrics.townId, townId));
+              }
+
+              const slots = ('buildingSlots' in oldEffects ? (oldEffects as any).buildingSlots : 0) as number;
+              if (slots > 0) {
+                const policy = await db.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId) });
+                if (policy) {
+                  const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+                  tp.upgradeCapacityBonus = Math.max(0, (tp.upgradeCapacityBonus ?? 0) - slots);
+                  await db.update(townPolicies).set({ tradePolicy: tp }).where(eq(townPolicies.townId, townId));
+                }
+              }
+
+              if (u.upgradeType === 'ROAD_NETWORK') {
+                const policy = await db.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId) });
+                if (policy) {
+                  const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+                  delete tp.roadNetworkUpgrade;
+                  await db.update(townPolicies).set({ tradePolicy: tp }).where(eq(townPolicies.townId, townId));
+                }
+              }
+
+              logTownEvent(townId, 'GOVERNANCE', `Upgrade Removed: ${typeConfig?.name}`, `${typeConfig?.name} removed due to ${DEGRADATION_THRESHOLD_DAYS} days of missed maintenance`, undefined).catch(() => {});
+              dropped++;
+            } else {
+              // Drop one tier
+              const newTier = oldTier - 1;
+              const newTierConfig = typeConfig?.tiers[newTier as 1 | 2 | 3];
+              const newEffects = newTierConfig?.effects ?? {};
+
+              await db.update(townUpgrades).set({
+                tier: newTier,
+                dailyMaintenance: newTierConfig?.maintenance ?? 0,
+                degradingDays: 0,
+                updatedAt: new Date().toISOString(),
+              }).where(eq(townUpgrades.id, u.id));
+
+              // Apply effect deltas (new - old = negative delta)
+              const oldMetrics = ('allMetricsBonus' in oldEffects ? (oldEffects as any).allMetricsBonus : 0) as number;
+              const newMetrics = ('allMetricsBonus' in newEffects ? (newEffects as any).allMetricsBonus : 0) as number;
+              const metricsDelta = newMetrics - oldMetrics;
+              if (metricsDelta !== 0) {
+                await db.update(townMetrics).set({
+                  projectModifier: sql`${townMetrics.projectModifier} + ${metricsDelta}`,
+                  effectiveValue: sql`LEAST(100, GREATEST(0, ${townMetrics.baseValue} + ${townMetrics.projectModifier} + ${metricsDelta} + ${townMetrics.modifier}))`,
+                }).where(eq(townMetrics.townId, townId));
+              }
+
+              const oldSlots = ('buildingSlots' in oldEffects ? (oldEffects as any).buildingSlots : 0) as number;
+              const newSlots = ('buildingSlots' in newEffects ? (newEffects as any).buildingSlots : 0) as number;
+              if (newSlots !== oldSlots) {
+                const policy = await db.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId) });
+                if (policy) {
+                  const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+                  tp.upgradeCapacityBonus = Math.max(0, (tp.upgradeCapacityBonus ?? 0) + (newSlots - oldSlots));
+                  await db.update(townPolicies).set({ tradePolicy: tp }).where(eq(townPolicies.townId, townId));
+                }
+              }
+
+              if (u.upgradeType === 'ROAD_NETWORK') {
+                const newTravel = ('travelTimeReduction' in newEffects ? (newEffects as any).travelTimeReduction : 0) as number;
+                const newDanger = ('roadDangerReduction' in newEffects ? (newEffects as any).roadDangerReduction : 0) as number;
+                const policy = await db.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId) });
+                if (policy) {
+                  const tp = (policy.tradePolicy as Record<string, any>) ?? {};
+                  tp.roadNetworkUpgrade = { travelTimeReduction: newTravel, roadDangerReduction: newDanger };
+                  await db.update(townPolicies).set({ tradePolicy: tp }).where(eq(townPolicies.townId, townId));
+                }
+              }
+
+              logTownEvent(townId, 'GOVERNANCE', `Upgrade Degraded: ${typeConfig?.name}`, `${typeConfig?.name} degraded from Tier ${oldTier} to Tier ${newTier} due to missed maintenance`, undefined).catch(() => {});
+              dropped++;
+            }
+          } else {
+            // Increment degrading days
+            await db.update(townUpgrades).set({
+              status: 'DEGRADING',
+              degradingDays: newDegradingDays,
+              updatedAt: new Date().toISOString(),
+            }).where(eq(townUpgrades.id, u.id));
+            degraded++;
+          }
+        }
+
+        // Notify mayor
+        const town = await db.query.towns.findFirst({
+          where: eq(towns.id, townId),
+          columns: { mayorId: true, name: true },
+        });
+        if (town?.mayorId) {
+          const worstDays = Math.max(...upgrades.map(u => u.degradingDays + 1));
+          await db.insert(notifications).values({
+            id: crypto.randomUUID(),
+            characterId: town.mayorId,
+            type: 'governance:upgrade_maintenance',
+            title: 'Upgrade Maintenance Warning',
+            message: `${town.name} treasury insufficient for upgrade maintenance (need ${totalMaintenance}g, have ${balance}g). ${worstDays}/${DEGRADATION_THRESHOLD_DAYS} days until degradation.`,
+            data: { townId, totalMaintenance, balance, degradingDays: worstDays },
+          });
+        }
+
+        console.log(`[DailyTick]   Town ${townId}: treasury insufficient (${balance}g < ${totalMaintenance}g), ${upgrades.length} upgrade(s) degrading`);
+      }
+    }
+
+    if (maintained > 0 || degraded > 0 || dropped > 0) {
+      console.log(`[DailyTick]   Upgrade maintenance: ${maintained} town(s) maintained, ${degraded} upgrade(s) degrading, ${dropped} upgrade(s) dropped tier`);
+    }
+  });
+
+  // -----------------------------------------------------------------------
   // Step 8: Election & Diplomacy Timers
   // -----------------------------------------------------------------------
   await runStep('Elections & Diplomacy', 8, async () => {
@@ -2118,13 +2294,21 @@ async function processGatherAction(
     }
   }
 
-  // Vareth local crafting yield bonus (home town only)
-  if (char.currentTownId && char.currentTownId === char.homeTownId) {
-    const gatherRelCtx = await getCharacterReligionContext(char.id);
-    const gatherRelBuffs = resolveReligionBuffs(gatherRelCtx);
-    const localYieldBonus = gatherRelBuffs.combinedBuffs.localCraftingYieldPercent ?? 0;
-    if (localYieldBonus > 0) {
-      totalYield = Math.max(1, Math.round(totalYield * (1 + localYieldBonus)));
+  // Vareth local crafting yield bonus (home town only) + Prosperity upgrade gathering yield
+  // Additive stacking: yield * (1 + varethPct + prosperityPct)
+  {
+    let combinedYieldBonus = 0;
+    if (char.currentTownId && char.currentTownId === char.homeTownId) {
+      const gatherRelCtx = await getCharacterReligionContext(char.id);
+      const gatherRelBuffs = resolveReligionBuffs(gatherRelCtx);
+      combinedYieldBonus += gatherRelBuffs.combinedBuffs.localCraftingYieldPercent ?? 0;
+    }
+    if (char.currentTownId) {
+      const upgradeEffects = await getTownUpgradeEffects(char.currentTownId);
+      combinedYieldBonus += upgradeEffects.gatheringYieldPercent;
+    }
+    if (combinedYieldBonus > 0) {
+      totalYield = Math.max(1, Math.round(totalYield * (1 + combinedYieldBonus)));
     }
   }
 
@@ -2769,10 +2953,15 @@ async function processCraftAction(
   const wrCraftLevel = wellRestedBuffs.get(char.id);
   const wrCraftBonus = wrCraftLevel ? (getWellRestedBonus(wrCraftLevel)?.craftingQualityBonus ?? 0) : 0;
 
-  // Religion crafting quality bonus (Tyrvex)
+  // Religion crafting quality bonus (Tyrvex) + Prosperity upgrade quality bonus (additive)
   const craftRelCtx = await getCharacterReligionContext(char.id);
   const craftRelBuffs = resolveReligionBuffs(craftRelCtx);
-  const religionCraftBonus = Math.floor((craftRelBuffs.combinedBuffs.craftingQualityPercent ?? 0) * 25);
+  let combinedCraftQualityPct = craftRelBuffs.combinedBuffs.craftingQualityPercent ?? 0;
+  if (char.currentTownId) {
+    const craftUpgradeEffects = await getTownUpgradeEffects(char.currentTownId);
+    combinedCraftQualityPct += craftUpgradeEffects.craftingQualityPercent;
+  }
+  const religionCraftBonus = Math.floor(combinedCraftQualityPct * 25);
 
   const { roll: diceRoll, total, quality: qualityName } = qualityRoll(
     getProficiencyBonus(char.level), statModifier, toolBonus, workshopLevel,

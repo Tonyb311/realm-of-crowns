@@ -142,8 +142,9 @@ router.post('/request-permit', authGuard, characterGuard, requireTown, validate(
       return res.status(403).json({ error: 'Building permits are not available in this town' });
     }
 
-    // Check town capacity (population / 100, minimum 20, plus project bonus)
-    const capBonus = ((policy?.tradePolicy as any)?.buildingCapacityBonus ?? 0) as number;
+    // Check town capacity (population / 100, minimum 20, plus project + upgrade bonuses)
+    const tp1 = (policy?.tradePolicy as any) ?? {};
+    const capBonus = ((tp1.buildingCapacityBonus ?? 0) + (tp1.upgradeCapacityBonus ?? 0)) as number;
     const maxBuildings = Math.max(20, Math.floor(town.population / 100)) + capBonus;
     if (town.buildings.length >= maxBuildings) {
       return res.status(400).json({
@@ -1415,7 +1416,8 @@ router.get('/town/:townId/economics', authGuard, characterGuard, requireTown, as
     const completedBuildings = (town.buildings || []).filter((b: any) => b.level >= 1);
     const totalBuildings = completedBuildings.length;
     const econPolicy = town.townPolicies?.[0];
-    const econCapBonus = ((econPolicy?.tradePolicy as any)?.buildingCapacityBonus ?? 0) as number;
+    const econTp = (econPolicy?.tradePolicy as any) ?? {};
+    const econCapBonus = ((econTp.buildingCapacityBonus ?? 0) + (econTp.upgradeCapacityBonus ?? 0)) as number;
     const maxBuildings = Math.max(20, Math.floor(town.population / 100)) + econCapBonus;
     const occupancyRate = totalBuildings / maxBuildings;
 
