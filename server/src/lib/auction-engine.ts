@@ -19,7 +19,7 @@ import {
 import { emitTradeCompleted } from '../socket/events';
 import { onMarketBuy, onMarketSell } from '../services/quest-triggers';
 import { getEffectiveTaxRate } from '../services/law-effects';
-import { getTaxReduction } from '../services/religion-buffs';
+import { getTaxReduction, getMarketBonus } from '../services/religion-buffs';
 import { getSimulationTick } from './simulation-context';
 
 // ---------------------------------------------------------------------------
@@ -368,6 +368,26 @@ export async function resolveAuctionCycle(townId: string): Promise<{
             await tx.update(churchChapters)
               .set({ treasury: sql`${churchChapters.treasury} + ${winnerSurcharge}` })
               .where(eq(churchChapters.id, varethChapter.id));
+          }
+        }
+
+        // Tessivane market bonus — seller gets extra gold, buyer gets rebate
+        const sellerMarketBonus = await getMarketBonus(listing.sellerId, townId);
+        if (sellerMarketBonus > 0) {
+          const sellerBonusGold = Math.floor(sellerNet * sellerMarketBonus);
+          if (sellerBonusGold > 0) {
+            await tx.update(characters)
+              .set({ gold: sql`${characters.gold} + ${sellerBonusGold}` })
+              .where(eq(characters.id, listing.sellerId));
+          }
+        }
+        const buyerMarketBonus = await getMarketBonus(winner.order.buyerId, townId);
+        if (buyerMarketBonus > 0) {
+          const buyerRebateGold = Math.floor(bidPrice * buyerMarketBonus);
+          if (buyerRebateGold > 0) {
+            await tx.update(characters)
+              .set({ gold: sql`${characters.gold} + ${buyerRebateGold}` })
+              .where(eq(characters.id, winner.order.buyerId));
           }
         }
 

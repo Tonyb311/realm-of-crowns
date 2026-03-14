@@ -106,6 +106,23 @@ export const GOD_BUFFS: Record<string, GodBuff> = {
     },
     shrineEffects: { economicPolicyBypass: 1 },
   },
+  tessivane: {
+    personalBuffs: {
+      MINORITY: { marketBonusPercent: 0.03 },
+      CHAPTER: { marketBonusPercent: 0.05, priceTrendAccess: 1 },
+      ESTABLISHED: { marketBonusPercent: 0.08, priceTrendAccess: 1, crossTownPriceVisibility: 1 },
+      DOMINANT: { marketBonusPercent: 0.10, priceTrendAccess: 1, crossTownPriceVisibility: 1 },
+    },
+    townEffects: {
+      ESTABLISHED: { marketBonusPercent: 0.02 },
+      DOMINANT: { marketBonusPercent: 0.03 },
+    },
+    metricModifiers: {
+      ESTABLISHED: {},
+      DOMINANT: {},
+    },
+    shrineEffects: { blackMarket: 1 },
+  },
 };
 
 /** Get a character's personal religion buffs based on their god and chapter tier */
@@ -131,4 +148,7 @@ export const BUFF_LABELS: Record<string, string> = {
   localCraftingYieldPercent: 'Local Crafting Yield',
   visitorMarketSurchargePercent: 'Visitor Market Surcharge',
   taxReductionPercent: 'Tax Reduction',
+  marketBonusPercent: 'Market Bonus',
+  priceTrendAccess: 'Price Trends',
+  crossTownPriceVisibility: 'Cross-Town Prices',
 };

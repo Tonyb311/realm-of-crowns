@@ -144,6 +144,21 @@ export function resolveReligionBuffs(ctx: ReligionContext): ReligionBuffs {
 }
 
 // ---------------------------------------------------------------------------
+// Market bonus helpers (Tessivane)
+// ---------------------------------------------------------------------------
+
+/**
+ * Get the combined market bonus percentage for a character in a given town.
+ * Combines personal buff (Tessivane member) + town-wide buff (Tessivane dominant).
+ * Returns 0-1 (e.g. 0.10 = 10% bonus).
+ */
+export async function getMarketBonus(characterId: string, townId: string): Promise<number> {
+  const ctx = await getCharacterReligionContext(characterId);
+  const buffs = resolveReligionBuffs({ ...ctx, homeTownId: townId });
+  return Math.min(1, buffs.combinedBuffs.marketBonusPercent ?? 0);
+}
+
+// ---------------------------------------------------------------------------
 // Tax reduction helpers (Veradine)
 // ---------------------------------------------------------------------------
 

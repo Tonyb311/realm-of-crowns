@@ -17,7 +17,7 @@ import { AuthenticatedRequest } from '../types/express';
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { getEffectiveTaxRate } from '../services/law-effects';
-import { getTaxReduction } from '../services/religion-buffs';
+import { getTaxReduction, getMarketBonus } from '../services/religion-buffs';
 import { getInnMenuCapacity, getInnTaxMultiplier } from '@shared/data/inn-config';
 import { calculateWeightState } from '../services/weight-calculator';
 import { emitInnCheckedIn, emitInnCheckedOut, emitInnPatronUpdate } from '../socket/events';
@@ -543,9 +543,24 @@ router.post('/:buildingId/menu/buy', authGuard, characterGuard, validate(buySche
           quantity,
         });
       }
+
+      // Tessivane market bonus — buyer rebate
+      const buyerMarketBonus = await getMarketBonus(character.id, building.townId);
+      if (buyerMarketBonus > 0) {
+        const rebateGold = Math.floor(basePrice * buyerMarketBonus);
+        if (rebateGold > 0) {
+          await tx.update(characters).set({
+            gold: sql`${characters.gold} + ${rebateGold}`,
+          }).where(eq(characters.id, character.id));
+        }
+      }
     });
 
     const weightState = await calculateWeightState(character.id);
+
+    // Calculate rebate for response
+    const buyerBonus = await getMarketBonus(character.id, building.townId);
+    const rebateAmount = buyerBonus > 0 ? Math.floor(basePrice * buyerBonus) : 0;
 
     return res.json({
       purchased: {
@@ -555,8 +570,9 @@ router.post('/:buildingId/menu/buy', authGuard, characterGuard, validate(buySche
         totalPrice,
         ownerShare,
         townTaxCut,
+        tessivaneRebate: rebateAmount,
       },
-      gold: character.gold - totalPrice,
+      gold: character.gold - totalPrice + rebateAmount,
       weightState,
     });
   } catch (error) {

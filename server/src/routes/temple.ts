@@ -1,7 +1,7 @@
 import { Router, type Response } from 'express';
-import { eq, and, ne, sql, asc, desc, count, gte } from 'drizzle-orm';
+import { eq, and, ne, sql, asc, desc, count, gte, gt, inArray } from 'drizzle-orm';
 import { db } from '../lib/db';
-import { gods, churchChapters, characters, towns, elections, electionCandidates, characterActiveEffects, townPolicies, townTreasuries } from '@database/tables';
+import { gods, churchChapters, characters, towns, elections, electionCandidates, characterActiveEffects, townPolicies, townTreasuries, priceHistories, itemTemplates } from '@database/tables';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
 import { characterGuard } from '../middleware/character-guard';
@@ -815,6 +815,200 @@ router.get('/economic-policy-status/:townId', async (req, res: Response) => {
     return res.json({ available, cooldownDaysLeft, lastUsed, recentLog });
   } catch (error) {
     logRouteError(req, 500, 'Temple economic policy status error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// GET /api/temple/price-trends/:townId — Tessivane CHAPTER+ price trends
+// ============================================================
+
+router.get('/price-trends/:townId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId } = req.params;
+
+    // Must be Tessivane member at CHAPTER+ tier
+    if (character.patronGodId !== 'tessivane') {
+      return res.status(403).json({ error: 'Only followers of Tessivane can view price trends' });
+    }
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(eq(churchChapters.godId, 'tessivane'), eq(churchChapters.townId, character.homeTownId ?? '')),
+      columns: { tier: true },
+    });
+    const tier = chapter?.tier ?? 'MINORITY';
+    if (tier === 'MINORITY') {
+      return res.status(403).json({ error: 'Price trends require CHAPTER tier or higher' });
+    }
+
+    // Query last 7 days of price history for this town
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const cutoffDate = sevenDaysAgo.toISOString().split('T')[0];
+
+    const history = await db.query.priceHistories.findMany({
+      where: and(
+        eq(priceHistories.townId, townId),
+        gte(priceHistories.date, cutoffDate),
+      ),
+      with: {
+        itemTemplate: { columns: { id: true, name: true } },
+      },
+      orderBy: [asc(priceHistories.itemTemplateId), asc(priceHistories.date)],
+    });
+
+    // Group by itemTemplateId
+    const byItem = new Map<string, Array<{ date: string; avgPrice: number; volume: number }>>();
+    const itemNames = new Map<string, string>();
+    for (const row of history) {
+      const key = row.itemTemplateId;
+      if (!byItem.has(key)) byItem.set(key, []);
+      byItem.get(key)!.push({ date: row.date, avgPrice: row.avgPrice, volume: row.volume });
+      if (row.itemTemplate) itemNames.set(key, row.itemTemplate.name);
+    }
+
+    // Calculate trends: avg last 3 days vs avg previous 4 days
+    const today = new Date();
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(today.getDate() - 3);
+    const threeDayStr = threeDaysAgo.toISOString().split('T')[0];
+
+    const items: Array<{
+      templateId: string;
+      itemName: string;
+      currentAvgPrice: number;
+      previousAvgPrice: number;
+      trend: 'RISING' | 'FALLING' | 'STABLE';
+      percentChange: number;
+      recentVolume: number;
+    }> = [];
+
+    for (const [templateId, entries] of byItem) {
+      // Need at least 3 data points in the 7-day window
+      if (entries.length < 3) continue;
+
+      const recent = entries.filter(e => e.date >= threeDayStr);
+      const previous = entries.filter(e => e.date < threeDayStr);
+
+      if (recent.length === 0 || previous.length === 0) continue;
+
+      const recentAvg = recent.reduce((s, e) => s + e.avgPrice * e.volume, 0) /
+        recent.reduce((s, e) => s + e.volume, 0);
+      const prevAvg = previous.reduce((s, e) => s + e.avgPrice * e.volume, 0) /
+        previous.reduce((s, e) => s + e.volume, 0);
+
+      const pctChange = prevAvg > 0 ? ((recentAvg - prevAvg) / prevAvg) * 100 : 0;
+      let trend: 'RISING' | 'FALLING' | 'STABLE' = 'STABLE';
+      if (pctChange >= 10) trend = 'RISING';
+      else if (pctChange <= -10) trend = 'FALLING';
+
+      items.push({
+        templateId,
+        itemName: itemNames.get(templateId) ?? templateId,
+        currentAvgPrice: Math.round(recentAvg),
+        previousAvgPrice: Math.round(prevAvg),
+        trend,
+        percentChange: Math.round(pctChange),
+        recentVolume: recent.reduce((s, e) => s + e.volume, 0),
+      });
+    }
+
+    // Sort by volume descending (most traded first)
+    items.sort((a, b) => b.recentVolume - a.recentVolume);
+
+    return res.json({ townId, items });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-price-trends', req)) return;
+    logRouteError(req, 500, 'Temple price trends error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// GET /api/temple/cross-town-prices — Tessivane ESTABLISHED+ cross-town visibility
+// ============================================================
+
+router.get('/cross-town-prices', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+
+    // Must be Tessivane member at ESTABLISHED+ tier
+    if (character.patronGodId !== 'tessivane') {
+      return res.status(403).json({ error: 'Only followers of Tessivane can view cross-town prices' });
+    }
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(eq(churchChapters.godId, 'tessivane'), eq(churchChapters.townId, character.homeTownId ?? '')),
+      columns: { tier: true },
+    });
+    const tier = chapter?.tier ?? 'MINORITY';
+    if (tier === 'MINORITY' || tier === 'CHAPTER') {
+      return res.status(403).json({ error: 'Cross-town price visibility requires ESTABLISHED tier or higher' });
+    }
+
+    // Query last 3 days of price history across all towns
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    const cutoffDate = threeDaysAgo.toISOString().split('T')[0];
+
+    const history = await db.query.priceHistories.findMany({
+      where: gte(priceHistories.date, cutoffDate),
+      with: {
+        itemTemplate: { columns: { id: true, name: true } },
+      },
+    });
+
+    // Get town names
+    const townIds = [...new Set(history.map(h => h.townId))];
+    const townRows = townIds.length > 0
+      ? await db.query.towns.findMany({
+          where: inArray(towns.id, townIds),
+          columns: { id: true, name: true },
+        })
+      : [];
+    const townNameMap = new Map(townRows.map(t => [t.id, t.name]));
+
+    // Group by itemTemplateId → townId → aggregate
+    const byItem = new Map<string, Map<string, { totalPrice: number; totalVolume: number }>>();
+    const itemNames = new Map<string, string>();
+
+    for (const row of history) {
+      if (!byItem.has(row.itemTemplateId)) byItem.set(row.itemTemplateId, new Map());
+      const townMap = byItem.get(row.itemTemplateId)!;
+      const existing = townMap.get(row.townId) ?? { totalPrice: 0, totalVolume: 0 };
+      existing.totalPrice += row.avgPrice * row.volume;
+      existing.totalVolume += row.volume;
+      townMap.set(row.townId, existing);
+      if (row.itemTemplate) itemNames.set(row.itemTemplateId, row.itemTemplate.name);
+    }
+
+    // Only include items traded in 2+ towns
+    const items: Array<{
+      templateId: string;
+      itemName: string;
+      prices: Array<{ townId: string; townName: string; avgPrice: number }>;
+    }> = [];
+
+    for (const [templateId, townMap] of byItem) {
+      if (townMap.size < 2) continue;
+      const prices = [...townMap.entries()].map(([tId, data]) => ({
+        townId: tId,
+        townName: townNameMap.get(tId) ?? tId,
+        avgPrice: Math.round(data.totalPrice / data.totalVolume),
+      }));
+      prices.sort((a, b) => a.avgPrice - b.avgPrice);
+      items.push({
+        templateId,
+        itemName: itemNames.get(templateId) ?? templateId,
+        prices,
+      });
+    }
+
+    items.sort((a, b) => a.itemName.localeCompare(b.itemName));
+
+    return res.json({ items });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-cross-town-prices', req)) return;
+    logRouteError(req, 500, 'Temple cross-town prices error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

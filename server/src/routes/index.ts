@@ -52,6 +52,7 @@ import townMetricsRouter from './town-metrics';
 import codexRouter from './codex';
 import inventoryRouter from './inventory';
 import noticeBoardRouter from './notice-board';
+import blackMarketRouter from './black-market';
 
 const router = Router();
 
@@ -109,5 +110,6 @@ router.use('/inventory', inventoryRouter);
 router.use('/notice-board', noticeBoardRouter);
 router.use('/temple', templeRouter);
 router.use('/town-metrics', townMetricsRouter);
+router.use('/black-market', blackMarketRouter);
 
 export default router;

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Church, Shield, Scale, Flame, Eye, HeartHandshake, BrickWall, Gavel,
   Smile, Handshake, Crown, EyeOff, BookOpen, Users, Star, AlertTriangle, X, Coins, Vote, Sparkles, Heart, Scroll, Landmark,
+  TrendingUp, TrendingDown, Minus, Skull,
 } from 'lucide-react';
 import api from '../services/api';
 import { RealmPanel, RealmButton, RealmBadge, PageHeader } from '../components/ui/realm-index';
@@ -366,6 +367,38 @@ export default function TemplePage() {
     },
   });
 
+  // Tessivane: price trends + cross-town prices
+  const [showPriceTrends, setShowPriceTrends] = useState(false);
+  const [showCrossTownPrices, setShowCrossTownPrices] = useState(false);
+
+  const isTessivane = patronGod?.id === 'tessivane';
+  const tessivaneChapterTier = myFaith?.homeChapter?.tier ?? 'MINORITY';
+  const hasPriceTrendAccess = isTessivane && tessivaneChapterTier !== 'MINORITY';
+  const hasCrossTownAccess = isTessivane && (tessivaneChapterTier === 'ESTABLISHED' || tessivaneChapterTier === 'DOMINANT');
+  const hasTessivaneShrine = chapters.some(ch => ch.godId === 'tessivane' && ch.isDominant && ch.isShrine);
+
+  const { data: priceTrends } = useQuery<{
+    items: Array<{
+      templateId: string; itemName: string; currentAvgPrice: number;
+      previousAvgPrice: number; trend: string; percentChange: number; recentVolume: number;
+    }>;
+  }>({
+    queryKey: ['temple', 'price-trends', townId],
+    queryFn: async () => (await api.get(`/temple/price-trends/${townId}`)).data,
+    enabled: !!townId && showPriceTrends && hasPriceTrendAccess,
+  });
+
+  const { data: crossTownPrices } = useQuery<{
+    items: Array<{
+      templateId: string; itemName: string;
+      prices: Array<{ townId: string; townName: string; avgPrice: number }>;
+    }>;
+  }>({
+    queryKey: ['temple', 'cross-town-prices'],
+    queryFn: async () => (await api.get('/temple/cross-town-prices')).data,
+    enabled: showCrossTownPrices && hasCrossTownAccess,
+  });
+
   if (!townId) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
@@ -468,10 +501,13 @@ export default function TemplePage() {
                       <span className="text-[10px] uppercase tracking-wider text-realm-text-muted">Personal</span>
                       {Object.entries(personalBuffs).map(([key, val]) => {
                         const isReduction = key.includes('Reduction');
+                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility';
                         return (
                           <div key={key} className="flex items-center justify-between text-[11px]">
                             <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
-                            <span className="text-realm-teal-300">{isReduction ? '-' : '+'}{Math.round(val * 100)}%</span>
+                            <span className="text-realm-teal-300">
+                              {isBoolean ? 'Unlocked' : `${isReduction ? '-' : '+'}${Math.round(val * 100)}%`}
+                            </span>
                           </div>
                         );
                       })}
@@ -482,10 +518,13 @@ export default function TemplePage() {
                       <span className="text-[10px] uppercase tracking-wider text-realm-text-muted">Town-wide ({dominant!.godName} dominance)</span>
                       {Object.entries(townBuffs).map(([key, val]) => {
                         const isReduction = key.includes('Reduction');
+                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility';
                         return (
                           <div key={key} className="flex items-center justify-between text-[11px]">
                             <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
-                            <span className="text-realm-teal-300">{isReduction ? '-' : '+'}{Math.round(val * 100)}%</span>
+                            <span className="text-realm-teal-300">
+                              {isBoolean ? 'Unlocked' : `${isReduction ? '-' : '+'}${Math.round(val * 100)}%`}
+                            </span>
                           </div>
                         );
                       })}
@@ -676,6 +715,108 @@ export default function TemplePage() {
                 <p className="text-[11px] text-realm-text-muted italic">
                   The Crucible's scholars sense no disturbances in the barrier... for now.
                 </p>
+              </div>
+            )}
+
+            {/* Tessivane: Price Trends (CHAPTER+) */}
+            {hasPriceTrendAccess && (
+              <div className="rounded-lg border border-realm-bg-600 bg-realm-bg-800 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-display text-realm-text-primary flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 text-realm-teal-300" />
+                    Price Trends
+                  </span>
+                  <RealmButton variant="secondary" size="sm" onClick={() => setShowPriceTrends(!showPriceTrends)}>
+                    {showPriceTrends ? 'Hide' : 'View'}
+                  </RealmButton>
+                </div>
+                {showPriceTrends && priceTrends && (
+                  <div className="space-y-1 mt-2">
+                    {priceTrends.items.length === 0 ? (
+                      <p className="text-[11px] text-realm-text-muted">No sufficient trade data in this town yet.</p>
+                    ) : (
+                      <div className="text-[11px]">
+                        <div className="flex items-center gap-2 text-[10px] text-realm-text-muted pb-1 border-b border-realm-bg-600">
+                          <span className="flex-1">Item</span>
+                          <span className="w-14 text-right">Price</span>
+                          <span className="w-8 text-center">Trend</span>
+                          <span className="w-10 text-right">Change</span>
+                        </div>
+                        {priceTrends.items.slice(0, 20).map(item => (
+                          <div key={item.templateId} className="flex items-center gap-2 py-0.5">
+                            <span className="flex-1 text-realm-text-secondary truncate">{item.itemName}</span>
+                            <span className="w-14 text-right text-realm-gold-400">{item.currentAvgPrice}g</span>
+                            <span className="w-8 text-center">
+                              {item.trend === 'RISING' && <TrendingUp className="w-3 h-3 text-green-400 inline" />}
+                              {item.trend === 'FALLING' && <TrendingDown className="w-3 h-3 text-red-400 inline" />}
+                              {item.trend === 'STABLE' && <Minus className="w-3 h-3 text-realm-text-muted inline" />}
+                            </span>
+                            <span className={`w-10 text-right ${item.percentChange > 0 ? 'text-green-400' : item.percentChange < 0 ? 'text-red-400' : 'text-realm-text-muted'}`}>
+                              {item.percentChange > 0 ? '+' : ''}{item.percentChange}%
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tessivane: Cross-Town Prices (ESTABLISHED+) */}
+            {hasCrossTownAccess && (
+              <div className="rounded-lg border border-realm-bg-600 bg-realm-bg-800 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-display text-realm-text-primary flex items-center gap-1.5">
+                    <Landmark className="w-3.5 h-3.5 text-realm-gold-400" />
+                    Cross-Town Prices
+                  </span>
+                  <RealmButton variant="secondary" size="sm" onClick={() => setShowCrossTownPrices(!showCrossTownPrices)}>
+                    {showCrossTownPrices ? 'Hide' : 'View'}
+                  </RealmButton>
+                </div>
+                {showCrossTownPrices && crossTownPrices && (
+                  <div className="space-y-2 mt-2">
+                    {crossTownPrices.items.length === 0 ? (
+                      <p className="text-[11px] text-realm-text-muted">No cross-town trade data available.</p>
+                    ) : crossTownPrices.items.slice(0, 15).map(item => (
+                      <div key={item.templateId} className="text-[11px]">
+                        <span className="text-realm-text-secondary font-display text-[10px]">{item.itemName}</span>
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                          {item.prices.map(p => {
+                            const isLowest = p.avgPrice === Math.min(...item.prices.map(pp => pp.avgPrice));
+                            const isHighest = p.avgPrice === Math.max(...item.prices.map(pp => pp.avgPrice));
+                            return (
+                              <span key={p.townId} className={`${isLowest ? 'text-green-400' : isHighest ? 'text-red-400' : 'text-realm-text-muted'}`}>
+                                {p.townName}: {p.avgPrice}g
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tessivane: Black Market link (shrine active in town) */}
+            {hasTessivaneShrine && (
+              <div className="rounded-lg border border-realm-bg-600 bg-realm-bg-800 p-3 space-y-2">
+                <span className="text-xs font-display text-realm-text-primary flex items-center gap-1.5">
+                  <Skull className="w-3.5 h-3.5 text-realm-purple-300" />
+                  Black Market
+                </span>
+                <p className="text-[11px] text-realm-text-muted">
+                  The Fellowship of the Silver Tongue operates a shadow market here. Zero fees — and zero protections. 5% of deals go south.
+                </p>
+                <RealmButton
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => window.location.hash = '#black-market'}
+                >
+                  Enter Black Market
+                </RealmButton>
               </div>
             )}
 

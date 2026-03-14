@@ -2499,3 +2499,42 @@ export const townMetrics = pgTable("town_metrics", {
 	}).onUpdate("cascade").onDelete("cascade"),
 ]);
 
+// ============================================================
+// Black Market Listings (Tessivane shrine)
+// ============================================================
+
+export const blackMarketListings = pgTable("black_market_listings", {
+	id: text().primaryKey().notNull(),
+	townId: text("town_id").notNull(),
+	sellerId: text("seller_id").notNull(),
+	itemId: text("item_id").notNull(),
+	itemTemplateId: text("item_template_id").notNull(),
+	itemName: text("item_name").notNull(),
+	quantity: integer().default(1).notNull(),
+	price: integer().notNull(),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	index("black_market_listings_town_id_idx").using("btree", table.townId.asc().nullsLast().op("text_ops")),
+	index("black_market_listings_seller_id_idx").using("btree", table.sellerId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+		columns: [table.townId],
+		foreignColumns: [towns.id],
+		name: "black_market_listings_town_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.sellerId],
+		foreignColumns: [characters.id],
+		name: "black_market_listings_seller_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.itemId],
+		foreignColumns: [items.id],
+		name: "black_market_listings_item_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.itemTemplateId],
+		foreignColumns: [itemTemplates.id],
+		name: "black_market_listings_item_template_id_fkey"
+	}).onUpdate("cascade").onDelete("restrict"),
+]);
+
