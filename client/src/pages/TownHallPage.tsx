@@ -212,6 +212,26 @@ export default function TownHallPage() {
     enabled: !!townId,
   });
 
+  // Referendums
+  const { data: referendumsData } = useQuery<Array<{
+    id: string; question: string; policyType: string; policyValue: any; status: string;
+    votesFor: number; votesAgainst: number; startedAt: string; endsAt: string;
+    proposedBy: { id: string; name: string } | null;
+  }>>({
+    queryKey: ['temple', 'referendums', townId],
+    queryFn: async () => (await api.get(`/temple/referendums/${townId}`)).data,
+    enabled: !!townId,
+  });
+
+  const voteRefMutation = useMutation({
+    mutationFn: async (data: { referendumId: string; vote: boolean }) => {
+      return (await api.post('/temple/vote-referendum', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple', 'referendums'] });
+    },
+  });
+
   // -------------------------------------------------------------------------
   // Relocation mutations
   // -------------------------------------------------------------------------
@@ -473,6 +493,69 @@ export default function TownHallPage() {
                   </div>
                 )}
               </section>
+
+              {/* Referendums */}
+              {referendumsData && referendumsData.length > 0 && (
+                <section>
+                  <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
+                    <Gavel className="w-5 h-5 text-realm-teal-400" />
+                    Referendums
+                  </h2>
+                  <div className="space-y-3">
+                    {referendumsData.map((r) => {
+                      const isActive = r.status === 'VOTING';
+                      const timeLeft = isActive ? Math.max(0, Math.ceil((new Date(r.endsAt).getTime() - Date.now()) / (1000 * 60 * 60))) : 0;
+                      return (
+                        <div key={r.id} className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-display text-realm-text-primary text-sm">{r.question}</h4>
+                            <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-sm border ${
+                              r.status === 'PASSED' ? 'text-green-400 border-green-400/30 bg-green-400/10' :
+                              r.status === 'FAILED' ? 'text-red-400 border-red-400/30 bg-red-400/10' :
+                              'text-yellow-400 border-yellow-400/30 bg-yellow-400/10'
+                            }`}>
+                              {r.status}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 text-xs text-realm-text-muted mb-2">
+                            <span>Proposed by {r.proposedBy?.name ?? 'Unknown'}</span>
+                            <span>{r.policyType.replace('_', ' ')}</span>
+                            {isActive && <span>{timeLeft}h remaining</span>}
+                          </div>
+                          <div className="flex items-center gap-4 text-sm">
+                            <span className="text-green-400">For: {r.votesFor}</span>
+                            <span className="text-red-400">Against: {r.votesAgainst}</span>
+                          </div>
+                          {isActive && character?.homeTownId === townId && (
+                            <div className="flex gap-2 mt-3">
+                              <button
+                                className="px-3 py-1.5 text-xs font-display border border-green-500/50 text-green-400 rounded hover:bg-green-500/10 transition-colors"
+                                onClick={() => voteRefMutation.mutate({ referendumId: r.id, vote: true })}
+                                disabled={voteRefMutation.isPending}
+                              >
+                                Vote For
+                              </button>
+                              <button
+                                className="px-3 py-1.5 text-xs font-display border border-red-500/50 text-red-400 rounded hover:bg-red-500/10 transition-colors"
+                                onClick={() => voteRefMutation.mutate({ referendumId: r.id, vote: false })}
+                                disabled={voteRefMutation.isPending}
+                              >
+                                Vote Against
+                              </button>
+                            </div>
+                          )}
+                          {voteRefMutation.isError && (
+                            <p className="text-[11px] text-red-400 mt-1">{(voteRefMutation.error as any)?.response?.data?.error || 'Failed to vote'}</p>
+                          )}
+                          {voteRefMutation.isSuccess && (
+                            <p className="text-[11px] text-green-400 mt-1">{voteRefMutation.data.message}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
 
               {/* Town Info */}
               <section>

@@ -2559,3 +2559,94 @@ export const racialReputations = pgTable("racial_reputations", {
 	}).onUpdate("cascade").onDelete("cascade"),
 ]);
 
+// ============================================================
+// Disputes (Solimene — formal dispute resolution)
+// ============================================================
+
+export const disputes = pgTable("disputes", {
+	id: text().primaryKey().notNull(),
+	townId: text("town_id").notNull(),
+	filerId: text("filer_id").notNull(),
+	targetId: text("target_id"),
+	title: text().notNull(),
+	description: text().notNull(),
+	status: text().notNull().default('OPEN'), // OPEN, ARBITRATING, RESOLVED, DISMISSED
+	resolution: text(),
+	arbiterId: text("arbiter_id"),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	resolvedAt: timestamp("resolved_at", { precision: 3, mode: 'string' }),
+}, (table) => [
+	index("disputes_town_id_idx").using("btree", table.townId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+		columns: [table.townId],
+		foreignColumns: [towns.id],
+		name: "disputes_town_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.filerId],
+		foreignColumns: [characters.id],
+		name: "disputes_filer_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.targetId],
+		foreignColumns: [characters.id],
+		name: "disputes_target_id_fkey"
+	}).onUpdate("cascade").onDelete("set null"),
+	foreignKey({
+		columns: [table.arbiterId],
+		foreignColumns: [characters.id],
+		name: "disputes_arbiter_id_fkey"
+	}).onUpdate("cascade").onDelete("set null"),
+]);
+
+// ============================================================
+// Referendums (Solimene — binding town-wide votes)
+// ============================================================
+
+export const referendums = pgTable("referendums", {
+	id: text().primaryKey().notNull(),
+	townId: text("town_id").notNull(),
+	proposedById: text("proposed_by_id").notNull(),
+	question: text().notNull(),
+	policyType: text("policy_type").notNull(), // 'tax_rate', 'building_permits', 'trade_policy'
+	policyValue: jsonb("policy_value").notNull(),
+	status: text().notNull().default('VOTING'), // VOTING, PASSED, FAILED
+	votesFor: integer("votes_for").notNull().default(0),
+	votesAgainst: integer("votes_against").notNull().default(0),
+	startedAt: timestamp("started_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	endsAt: timestamp("ends_at", { precision: 3, mode: 'string' }).notNull(),
+	resolvedAt: timestamp("resolved_at", { precision: 3, mode: 'string' }),
+}, (table) => [
+	index("referendums_town_id_idx").using("btree", table.townId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+		columns: [table.townId],
+		foreignColumns: [towns.id],
+		name: "referendums_town_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.proposedById],
+		foreignColumns: [characters.id],
+		name: "referendums_proposed_by_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+]);
+
+export const referendumVotes = pgTable("referendum_votes", {
+	id: text().primaryKey().notNull(),
+	referendumId: text("referendum_id").notNull(),
+	characterId: text("character_id").notNull(),
+	vote: boolean().notNull(), // true = FOR, false = AGAINST
+	votedAt: timestamp("voted_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	uniqueIndex("referendum_votes_referendum_id_character_id_key").on(table.referendumId, table.characterId),
+	foreignKey({
+		columns: [table.referendumId],
+		foreignColumns: [referendums.id],
+		name: "referendum_votes_referendum_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.characterId],
+		foreignColumns: [characters.id],
+		name: "referendum_votes_character_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+]);
+

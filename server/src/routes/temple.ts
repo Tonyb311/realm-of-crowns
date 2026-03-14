@@ -1,7 +1,7 @@
 import { Router, type Response } from 'express';
-import { eq, and, ne, sql, asc, desc, count, gte, gt, inArray } from 'drizzle-orm';
+import { eq, and, ne, sql, asc, desc, count, gte, gt, lte, inArray } from 'drizzle-orm';
 import { db } from '../lib/db';
-import { gods, churchChapters, characters, towns, elections, electionCandidates, characterActiveEffects, townPolicies, townTreasuries, priceHistories, itemTemplates, travelRoutes, racialReputations } from '@database/tables';
+import { gods, churchChapters, characters, towns, elections, electionCandidates, characterActiveEffects, townPolicies, townTreasuries, priceHistories, itemTemplates, travelRoutes, racialReputations, disputes, referendums, referendumVotes } from '@database/tables';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
 import { characterGuard } from '../middleware/character-guard';
@@ -17,6 +17,9 @@ const POLICY_BYPASS_COOLDOWN_DAYS = 30;
 const SUMMIT_COOLDOWN_DAYS = 30;
 const SUMMIT_DURATION_DAYS = 7;
 const SUMMIT_COST = 200;
+const REFERENDUM_COOLDOWN_DAYS = 30;
+const REFERENDUM_DURATION_DAYS = 3;
+const MAX_OPEN_DISPUTES = 3;
 
 const router = Router();
 
@@ -1232,6 +1235,375 @@ router.get('/summit-status/:townId', async (req, res: Response) => {
   } catch (error) {
     if (handleDbError(error, res, 'temple-summit-status', req)) return;
     logRouteError(req, 500, 'Temple summit status error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// DISPUTE ENDPOINTS (Solimene — formal dispute resolution)
+// ============================================================
+
+// POST /api/temple/file-dispute — File a formal dispute (Solimene ESTABLISHED+)
+router.post('/file-dispute', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId, targetId, title, description } = req.body;
+
+    if (!townId || !title || !description) {
+      return res.status(400).json({ error: 'townId, title, and description are required' });
+    }
+
+    // Must be Solimene member at ESTABLISHED+
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(eq(churchChapters.townId, townId), eq(churchChapters.godId, 'solimene')),
+    });
+    if (!chapter) {
+      return res.status(400).json({ error: 'No Solimene chapter in this town' });
+    }
+
+    // Check character is Solimene follower
+    if (character.patronGodId !== 'solimene') {
+      return res.status(403).json({ error: 'Must be a follower of Solimene' });
+    }
+
+    if (chapter.tier !== 'ESTABLISHED' && chapter.tier !== 'DOMINANT') {
+      return res.status(403).json({ error: 'Solimene chapter must be at ESTABLISHED or DOMINANT tier' });
+    }
+
+    // Check max open disputes per character
+    const openDisputeCount = await db.select({ count: count() })
+      .from(disputes)
+      .where(and(
+        eq(disputes.filerId, character.id),
+        ne(disputes.status, 'DISMISSED'),
+        ne(disputes.status, 'RESOLVED'),
+      ));
+
+    if (openDisputeCount[0].count >= MAX_OPEN_DISPUTES) {
+      return res.status(400).json({ error: `Maximum ${MAX_OPEN_DISPUTES} open disputes per character` });
+    }
+
+    const disputeId = crypto.randomUUID();
+    await db.insert(disputes).values({
+      id: disputeId,
+      townId,
+      filerId: character.id,
+      targetId: targetId || null,
+      title,
+      description,
+      status: 'OPEN',
+    });
+
+    return res.json({ disputeId, message: 'Dispute filed successfully' });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-file-dispute', req)) return;
+    logRouteError(req, 500, 'Temple file dispute error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/temple/disputes/:townId — View disputes in town (public)
+router.get('/disputes/:townId', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId } = req.params;
+
+    const townDisputes = await db.query.disputes.findMany({
+      where: and(
+        eq(disputes.townId, townId),
+        ne(disputes.status, 'DISMISSED'),
+      ),
+      orderBy: desc(disputes.createdAt),
+      with: {
+        filer: { columns: { id: true, name: true } },
+        target: { columns: { id: true, name: true } },
+        arbiter: { columns: { id: true, name: true } },
+      },
+    });
+
+    return res.json(townDisputes);
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-disputes', req)) return;
+    logRouteError(req, 500, 'Temple disputes error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/temple/arbitrate-dispute — Resolve a dispute (Solimene HP only)
+router.post('/arbitrate-dispute', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { disputeId, resolution } = req.body;
+
+    if (!disputeId || !resolution) {
+      return res.status(400).json({ error: 'disputeId and resolution are required' });
+    }
+
+    // Look up the dispute
+    const dispute = await db.query.disputes.findFirst({
+      where: eq(disputes.id, disputeId),
+    });
+    if (!dispute) {
+      return res.status(404).json({ error: 'Dispute not found' });
+    }
+    if (dispute.status === 'RESOLVED' || dispute.status === 'DISMISSED') {
+      return res.status(400).json({ error: 'Dispute already resolved or dismissed' });
+    }
+
+    // Must be HP of Solimene in this town
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(eq(churchChapters.townId, dispute.townId), eq(churchChapters.godId, 'solimene')),
+    });
+    if (!chapter || chapter.highPriestId !== character.id) {
+      return res.status(403).json({ error: 'Must be the High Priest of Solimene in this town' });
+    }
+
+    const now = new Date().toISOString();
+    await db.update(disputes).set({
+      status: 'RESOLVED',
+      resolution,
+      arbiterId: character.id,
+      resolvedAt: now,
+    }).where(eq(disputes.id, disputeId));
+
+    return res.json({ message: 'Dispute resolved', disputeId });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-arbitrate-dispute', req)) return;
+    logRouteError(req, 500, 'Temple arbitrate dispute error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/temple/dismiss-dispute — Dismiss a dispute (Solimene HP only)
+router.post('/dismiss-dispute', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { disputeId } = req.body;
+
+    if (!disputeId) {
+      return res.status(400).json({ error: 'disputeId is required' });
+    }
+
+    const dispute = await db.query.disputes.findFirst({
+      where: eq(disputes.id, disputeId),
+    });
+    if (!dispute) {
+      return res.status(404).json({ error: 'Dispute not found' });
+    }
+    if (dispute.status === 'RESOLVED' || dispute.status === 'DISMISSED') {
+      return res.status(400).json({ error: 'Dispute already resolved or dismissed' });
+    }
+
+    // Must be HP of Solimene in this town
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(eq(churchChapters.townId, dispute.townId), eq(churchChapters.godId, 'solimene')),
+    });
+    if (!chapter || chapter.highPriestId !== character.id) {
+      return res.status(403).json({ error: 'Must be the High Priest of Solimene in this town' });
+    }
+
+    const now = new Date().toISOString();
+    await db.update(disputes).set({
+      status: 'DISMISSED',
+      resolvedAt: now,
+    }).where(eq(disputes.id, disputeId));
+
+    return res.json({ message: 'Dispute dismissed', disputeId });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-dismiss-dispute', req)) return;
+    logRouteError(req, 500, 'Temple dismiss dispute error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// REFERENDUM ENDPOINTS (Solimene — binding town-wide votes)
+// ============================================================
+
+// POST /api/temple/propose-referendum — Propose a binding referendum (Solimene HP with Shrine)
+router.post('/propose-referendum', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId, question, policyType, policyValue } = req.body;
+
+    if (!townId || !question || !policyType || policyValue === undefined) {
+      return res.status(400).json({ error: 'townId, question, policyType, and policyValue are required' });
+    }
+
+    // Validate policy type
+    const validPolicyTypes = ['tax_rate', 'building_permits', 'trade_policy'];
+    if (!validPolicyTypes.includes(policyType)) {
+      return res.status(400).json({ error: `Invalid policy type. Must be one of: ${validPolicyTypes.join(', ')}` });
+    }
+
+    // Validate tax rate range
+    if (policyType === 'tax_rate') {
+      const taxRate = typeof policyValue === 'object' ? policyValue.taxRate : policyValue;
+      if (typeof taxRate !== 'number' || taxRate < 0.05 || taxRate > 0.25) {
+        return res.status(400).json({ error: 'Tax rate must be between 0.05 and 0.25' });
+      }
+    }
+
+    // Must be HP of dominant Solimene chapter with shrine
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(eq(churchChapters.townId, townId), eq(churchChapters.godId, 'solimene')),
+    });
+    if (!chapter || chapter.highPriestId !== character.id) {
+      return res.status(403).json({ error: 'Must be the High Priest of Solimene in this town' });
+    }
+
+    if (chapter.tier !== 'DOMINANT') {
+      return res.status(403).json({ error: 'Solimene chapter must be at DOMINANT tier' });
+    }
+
+    if (!chapter.isShrine) {
+      return res.status(403).json({ error: 'Solimene shrine must be active' });
+    }
+
+    // Check cooldown (30 days) — stored in townPolicies.tradePolicy JSONB
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+    });
+    if (policy?.tradePolicy) {
+      const tp = policy.tradePolicy as Record<string, any>;
+      if (tp.solimenReferendumAt) {
+        const lastReferendum = new Date(tp.solimenReferendumAt);
+        const cooldownEnd = new Date(lastReferendum.getTime() + REFERENDUM_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
+        if (new Date() < cooldownEnd) {
+          return res.status(400).json({
+            error: `Referendum cooldown active until ${cooldownEnd.toISOString().split('T')[0]}`,
+            cooldownEndsAt: cooldownEnd.toISOString(),
+          });
+        }
+      }
+    }
+
+    // Check no active referendum in this town
+    const activeRef = await db.query.referendums.findFirst({
+      where: and(eq(referendums.townId, townId), eq(referendums.status, 'VOTING')),
+    });
+    if (activeRef) {
+      return res.status(400).json({ error: 'A referendum is already active in this town' });
+    }
+
+    const now = new Date();
+    const endsAt = new Date(now.getTime() + REFERENDUM_DURATION_DAYS * 24 * 60 * 60 * 1000);
+
+    const referendumId = crypto.randomUUID();
+    await db.insert(referendums).values({
+      id: referendumId,
+      townId,
+      proposedById: character.id,
+      question,
+      policyType,
+      policyValue: typeof policyValue === 'object' ? policyValue : { value: policyValue },
+      status: 'VOTING',
+      votesFor: 0,
+      votesAgainst: 0,
+      startedAt: now.toISOString(),
+      endsAt: endsAt.toISOString(),
+    });
+
+    // Update cooldown in townPolicies tradePolicy JSONB
+    const existingPolicy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+    });
+    if (existingPolicy) {
+      const existingTp = (existingPolicy.tradePolicy as Record<string, any>) || {};
+      await db.update(townPolicies).set({
+        tradePolicy: { ...existingTp, solimenReferendumAt: now.toISOString() },
+      }).where(eq(townPolicies.townId, townId));
+    }
+
+    return res.json({ referendumId, endsAt: endsAt.toISOString(), message: 'Referendum proposed successfully' });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-propose-referendum', req)) return;
+    logRouteError(req, 500, 'Temple propose referendum error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/temple/vote-referendum — Vote on an active referendum (town resident)
+router.post('/vote-referendum', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { referendumId, vote } = req.body;
+
+    if (!referendumId || typeof vote !== 'boolean') {
+      return res.status(400).json({ error: 'referendumId and vote (boolean) are required' });
+    }
+
+    const referendum = await db.query.referendums.findFirst({
+      where: eq(referendums.id, referendumId),
+    });
+    if (!referendum) {
+      return res.status(404).json({ error: 'Referendum not found' });
+    }
+    if (referendum.status !== 'VOTING') {
+      return res.status(400).json({ error: 'Referendum is no longer active' });
+    }
+
+    // Must be a resident (homeTownId)
+    if (character.homeTownId !== referendum.townId) {
+      return res.status(403).json({ error: 'Must be a resident of this town to vote' });
+    }
+
+    // One vote per character per referendum (unique constraint handles race condition)
+    const voteId = crypto.randomUUID();
+    try {
+      await db.insert(referendumVotes).values({
+        id: voteId,
+        referendumId,
+        characterId: character.id,
+        vote,
+      });
+    } catch (err: any) {
+      if (err?.code === '23505' || err?.constraint?.includes('referendum_votes_referendum_id_character_id_key')) {
+        return res.status(400).json({ error: 'You have already voted on this referendum' });
+      }
+      throw err;
+    }
+
+    // Update vote counts
+    if (vote) {
+      await db.update(referendums).set({
+        votesFor: sql`${referendums.votesFor} + 1`,
+      }).where(eq(referendums.id, referendumId));
+    } else {
+      await db.update(referendums).set({
+        votesAgainst: sql`${referendums.votesAgainst} + 1`,
+      }).where(eq(referendums.id, referendumId));
+    }
+
+    return res.json({ message: `Vote recorded: ${vote ? 'FOR' : 'AGAINST'}` });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-vote-referendum', req)) return;
+    logRouteError(req, 500, 'Temple vote referendum error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/temple/referendums/:townId — View referendums in town (public)
+router.get('/referendums/:townId', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { townId } = req.params;
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Active + recent (last 30 days)
+    const townReferendums = await db.query.referendums.findMany({
+      where: and(
+        eq(referendums.townId, townId),
+        gte(referendums.startedAt, thirtyDaysAgo),
+      ),
+      orderBy: desc(referendums.startedAt),
+      with: {
+        proposedBy: { columns: { id: true, name: true } },
+      },
+    });
+
+    return res.json(townReferendums);
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-referendums', req)) return;
+    logRouteError(req, 500, 'Temple referendums error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

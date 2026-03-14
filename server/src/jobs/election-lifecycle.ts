@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import { db } from '../lib/db';
 import { eq, lte, and, ne, count, desc, sql, isNull, gte } from 'drizzle-orm';
-import { elections, electionVotes, towns, characters, impeachments, kingdoms, churchChapters, gods } from '@database/tables';
+import { elections, electionVotes, towns, characters, impeachments, kingdoms, churchChapters, gods, referendums, townPolicies, townTreasuries } from '@database/tables';
 import { logger } from '../lib/logger';
 import { cronJobExecutions } from '../lib/metrics';
 import type { Server } from 'socket.io';
@@ -19,6 +19,7 @@ export function startElectionLifecycle(io: Server) {
       await transitionNominationsToVoting(io);
       await transitionVotingToCompleted(io);
       await resolveExpiredImpeachments(io);
+      await resolveExpiredReferendums(io);
       cronJobExecutions.inc({ job: 'electionLifecycle', result: 'success' });
     } catch (error: unknown) {
       cronJobExecutions.inc({ job: 'electionLifecycle', result: 'failure' });
@@ -431,5 +432,115 @@ async function resolveExpiredImpeachments(io: Server) {
       votesFor: impeachment.votesFor,
       votesAgainst: impeachment.votesAgainst,
     });
+  }
+}
+
+/**
+ * Resolve referendums whose voting period has expired.
+ * Simple majority: votesFor > votesAgainst (strictly greater, ties → FAILED).
+ */
+async function resolveExpiredReferendums(io: Server) {
+  const now = new Date();
+
+  const expiredRefs = await db.query.referendums.findMany({
+    where: and(
+      eq(referendums.status, 'VOTING'),
+      lte(referendums.endsAt, now.toISOString()),
+    ),
+  });
+
+  for (const ref of expiredRefs) {
+    const passed = ref.votesFor > ref.votesAgainst; // strictly greater — ties fail
+
+    if (passed) {
+      await applyReferendumPolicy(ref);
+    }
+
+    await db.update(referendums).set({
+      status: passed ? 'PASSED' : 'FAILED',
+      resolvedAt: now.toISOString(),
+    }).where(eq(referendums.id, ref.id));
+
+    console.log(`[ElectionLifecycle] Referendum ${ref.id} ${passed ? 'PASSED' : 'FAILED'} (${ref.votesFor} for, ${ref.votesAgainst} against): "${ref.question}"`);
+
+    io.emit('referendum:resolved', {
+      referendumId: ref.id,
+      townId: ref.townId,
+      passed,
+      votesFor: ref.votesFor,
+      votesAgainst: ref.votesAgainst,
+      question: ref.question,
+      policyType: ref.policyType,
+    });
+  }
+}
+
+/**
+ * Apply referendum policy change — mirrors governance.ts patterns exactly.
+ */
+async function applyReferendumPolicy(ref: { townId: string; policyType: string; policyValue: unknown }) {
+  const pv = ref.policyValue as Record<string, any>;
+
+  switch (ref.policyType) {
+    case 'tax_rate': {
+      const taxRate = pv.taxRate ?? pv.value;
+      if (typeof taxRate !== 'number') break;
+
+      // Mirror governance.ts set-tax: upsert townPolicies + sync townTreasuries
+      const existingPolicy = await db.query.townPolicies.findFirst({
+        where: eq(townPolicies.townId, ref.townId),
+      });
+      if (existingPolicy) {
+        await db.update(townPolicies).set({ taxRate }).where(eq(townPolicies.townId, ref.townId));
+      } else {
+        await db.insert(townPolicies).values({ id: crypto.randomUUID(), townId: ref.townId, taxRate });
+      }
+
+      const existingTreasury = await db.query.townTreasuries.findFirst({
+        where: eq(townTreasuries.townId, ref.townId),
+      });
+      if (existingTreasury) {
+        await db.update(townTreasuries).set({ taxRate }).where(eq(townTreasuries.townId, ref.townId));
+      } else {
+        await db.insert(townTreasuries).values({ id: crypto.randomUUID(), townId: ref.townId, taxRate });
+      }
+
+      console.log(`[ElectionLifecycle] Referendum applied tax_rate=${taxRate} to town ${ref.townId}`);
+      break;
+    }
+    case 'building_permits': {
+      const permits = pv.buildingPermits ?? pv.value;
+      if (typeof permits !== 'boolean') break;
+
+      const existingPolicy = await db.query.townPolicies.findFirst({
+        where: eq(townPolicies.townId, ref.townId),
+      });
+      if (existingPolicy) {
+        await db.update(townPolicies).set({ buildingPermits: permits }).where(eq(townPolicies.townId, ref.townId));
+      } else {
+        await db.insert(townPolicies).values({ id: crypto.randomUUID(), townId: ref.townId, buildingPermits: permits });
+      }
+
+      console.log(`[ElectionLifecycle] Referendum applied building_permits=${permits} to town ${ref.townId}`);
+      break;
+    }
+    case 'trade_policy': {
+      const existingPolicy = await db.query.townPolicies.findFirst({
+        where: eq(townPolicies.townId, ref.townId),
+      });
+      const existingTp = (existingPolicy?.tradePolicy as Record<string, any>) || {};
+      const newTp = { ...existingTp, ...pv };
+
+      if (existingPolicy) {
+        await db.update(townPolicies).set({ tradePolicy: newTp }).where(eq(townPolicies.townId, ref.townId));
+      } else {
+        await db.insert(townPolicies).values({ id: crypto.randomUUID(), townId: ref.townId, tradePolicy: newTp });
+      }
+
+      console.log(`[ElectionLifecycle] Referendum applied trade_policy to town ${ref.townId}`);
+      break;
+    }
+    default:
+      console.warn(`[ElectionLifecycle] Unknown referendum policy type: ${ref.policyType}`);
   }
 }

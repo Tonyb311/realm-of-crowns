@@ -155,6 +155,13 @@
       "when": 1774828800000,
       "tag": "0021_racial_reputations",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1774915200000,
+      "tag": "0022_solimene_disputes_referendums",
+      "breakpoints": true
     }
   ]
 }

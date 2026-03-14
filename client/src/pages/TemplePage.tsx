@@ -401,6 +401,100 @@ export default function TemplePage() {
     },
   });
 
+  // Solimene: disputes + referendums
+  const isSolimene = patronGod?.id === 'solimene';
+  const solimeneChapter = chapters.find(ch => ch.godId === 'solimene');
+  const solimeneTier = solimeneChapter?.tier ?? 'MINORITY';
+  const canViewDisputes = isSolimene && solimeneTier !== 'MINORITY';
+  const canFileDispute = isSolimene && (solimeneTier === 'ESTABLISHED' || solimeneTier === 'DOMINANT');
+  const isSolimeneHP = chapters.some(ch => ch.godId === 'solimene' && ch.highPriestId === character?.id);
+  const hasSolimeneShrine = chapters.some(ch => ch.godId === 'solimene' && ch.isDominant && ch.isShrine);
+  const [showDisputes, setShowDisputes] = useState(false);
+  const [showFileDispute, setShowFileDispute] = useState(false);
+  const [disputeTitle, setDisputeTitle] = useState('');
+  const [disputeDesc, setDisputeDesc] = useState('');
+  const [arbitrateId, setArbitrateId] = useState<string | null>(null);
+  const [arbitrateText, setArbitrateText] = useState('');
+
+  const { data: disputesData, refetch: refetchDisputes } = useQuery<Array<{
+    id: string; title: string; description: string; status: string; resolution: string | null; createdAt: string;
+    filer: { id: string; name: string } | null;
+    target: { id: string; name: string } | null;
+    arbiter: { id: string; name: string } | null;
+  }>>({
+    queryKey: ['temple', 'disputes', townId],
+    queryFn: async () => (await api.get(`/temple/disputes/${townId}`)).data,
+    enabled: showDisputes && !!townId,
+  });
+
+  const fileDisputeMutation = useMutation({
+    mutationFn: async (data: { townId: string; title: string; description: string }) => {
+      return (await api.post('/temple/file-dispute', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple', 'disputes'] });
+      setShowFileDispute(false);
+      setDisputeTitle('');
+      setDisputeDesc('');
+    },
+  });
+
+  const arbitrateMutation = useMutation({
+    mutationFn: async (data: { disputeId: string; resolution: string }) => {
+      return (await api.post('/temple/arbitrate-dispute', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple', 'disputes'] });
+      setArbitrateId(null);
+      setArbitrateText('');
+    },
+  });
+
+  const dismissMutation = useMutation({
+    mutationFn: async (disputeId: string) => {
+      return (await api.post('/temple/dismiss-dispute', { disputeId })).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple', 'disputes'] });
+    },
+  });
+
+  const { data: referendumsData } = useQuery<Array<{
+    id: string; question: string; policyType: string; policyValue: any; status: string;
+    votesFor: number; votesAgainst: number; startedAt: string; endsAt: string;
+    proposedBy: { id: string; name: string } | null;
+  }>>({
+    queryKey: ['temple', 'referendums', townId],
+    queryFn: async () => (await api.get(`/temple/referendums/${townId}`)).data,
+    enabled: !!townId,
+  });
+
+  const [showProposeRef, setShowProposeRef] = useState(false);
+  const [refQuestion, setRefQuestion] = useState('');
+  const [refPolicyType, setRefPolicyType] = useState('tax_rate');
+  const [refPolicyValue, setRefPolicyValue] = useState('');
+
+  const proposeRefMutation = useMutation({
+    mutationFn: async (data: { townId: string; question: string; policyType: string; policyValue: any }) => {
+      return (await api.post('/temple/propose-referendum', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple', 'referendums'] });
+      setShowProposeRef(false);
+      setRefQuestion('');
+      setRefPolicyValue('');
+    },
+  });
+
+  const voteRefMutation = useMutation({
+    mutationFn: async (data: { referendumId: string; vote: boolean }) => {
+      return (await api.post('/temple/vote-referendum', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple', 'referendums'] });
+    },
+  });
+
   // Tessivane: price trends + cross-town prices
   const [showPriceTrends, setShowPriceTrends] = useState(false);
   const [showCrossTownPrices, setShowCrossTownPrices] = useState(false);
@@ -535,7 +629,7 @@ export default function TemplePage() {
                       <span className="text-[10px] uppercase tracking-wider text-realm-text-muted">Personal</span>
                       {Object.entries(personalBuffs).map(([key, val]) => {
                         const isReduction = key.includes('Reduction');
-                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown';
+                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown' || key === 'disputeResolution' || key === 'fileFormalDispute';
                         return (
                           <div key={key} className="flex items-center justify-between text-[11px]">
                             <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
@@ -552,7 +646,7 @@ export default function TemplePage() {
                       <span className="text-[10px] uppercase tracking-wider text-realm-text-muted">Town-wide ({dominant!.godName} dominance)</span>
                       {Object.entries(townBuffs).map(([key, val]) => {
                         const isReduction = key.includes('Reduction');
-                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown';
+                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown' || key === 'disputeResolution' || key === 'fileFormalDispute';
                         return (
                           <div key={key} className="flex items-center justify-between text-[11px]">
                             <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
@@ -939,6 +1033,258 @@ export default function TemplePage() {
                   <p className="text-[11px] text-realm-danger">
                     {(summitMutation.error as any)?.response?.data?.error || 'Failed to host summit'}
                   </p>
+                )}
+              </div>
+            )}
+
+            {/* Solimene: Disputes (CHAPTER+) */}
+            {canViewDisputes && (
+              <div className="rounded-lg border border-realm-bg-600 bg-realm-bg-800 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-display text-realm-text-primary flex items-center gap-1.5">
+                    <Scale className="w-3.5 h-3.5 text-realm-teal-400" />
+                    Disputes
+                  </span>
+                  <div className="flex gap-1.5">
+                    {canFileDispute && (
+                      <RealmButton variant="secondary" size="sm" onClick={() => setShowFileDispute(!showFileDispute)}>
+                        {showFileDispute ? 'Cancel' : 'File Dispute'}
+                      </RealmButton>
+                    )}
+                    <RealmButton variant="secondary" size="sm" onClick={() => setShowDisputes(!showDisputes)}>
+                      {showDisputes ? 'Hide' : 'View'}
+                    </RealmButton>
+                  </div>
+                </div>
+
+                {showFileDispute && (
+                  <div className="space-y-2 pt-1">
+                    <input
+                      className="w-full bg-realm-bg-700 border border-realm-bg-500 rounded px-2 py-1 text-xs text-realm-text-primary"
+                      placeholder="Dispute title"
+                      value={disputeTitle}
+                      onChange={(e) => setDisputeTitle(e.target.value)}
+                    />
+                    <textarea
+                      className="w-full bg-realm-bg-700 border border-realm-bg-500 rounded px-2 py-1 text-xs text-realm-text-primary h-16 resize-none"
+                      placeholder="Describe the dispute..."
+                      value={disputeDesc}
+                      onChange={(e) => setDisputeDesc(e.target.value)}
+                    />
+                    <RealmButton
+                      variant="primary"
+                      size="sm"
+                      onClick={() => fileDisputeMutation.mutate({ townId: templeData!.townId, title: disputeTitle, description: disputeDesc })}
+                      disabled={fileDisputeMutation.isPending || !disputeTitle.trim() || !disputeDesc.trim()}
+                    >
+                      {fileDisputeMutation.isPending ? 'Filing...' : 'Submit Dispute'}
+                    </RealmButton>
+                    {fileDisputeMutation.isError && (
+                      <p className="text-[11px] text-realm-danger">{(fileDisputeMutation.error as any)?.response?.data?.error || 'Failed to file dispute'}</p>
+                    )}
+                  </div>
+                )}
+
+                {showDisputes && disputesData && (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {disputesData.length === 0 ? (
+                      <p className="text-[11px] text-realm-text-muted">No active disputes in this town.</p>
+                    ) : disputesData.map((d) => (
+                      <div key={d.id} className="bg-realm-bg-700 rounded p-2 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-display text-realm-text-primary">{d.title}</span>
+                          <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-sm border ${
+                            d.status === 'OPEN' ? 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10' :
+                            d.status === 'RESOLVED' ? 'text-green-400 border-green-400/30 bg-green-400/10' :
+                            'text-realm-text-muted border-realm-bg-500 bg-realm-bg-600'
+                          }`}>
+                            {d.status}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-realm-text-muted">{d.description}</p>
+                        <p className="text-[10px] text-realm-text-muted">
+                          Filed by {d.filer?.name ?? 'Unknown'}
+                          {d.target ? ` against ${d.target.name}` : ''}
+                          {' — '}{new Date(d.createdAt).toLocaleDateString()}
+                        </p>
+                        {d.status === 'RESOLVED' && d.resolution && (
+                          <div className="bg-realm-bg-600 rounded p-1.5 mt-1">
+                            <p className="text-[10px] text-realm-gold-400">Resolution by {d.arbiter?.name ?? 'arbiter'}:</p>
+                            <p className="text-[11px] text-realm-text-secondary">{d.resolution}</p>
+                          </div>
+                        )}
+                        {isSolimeneHP && d.status === 'OPEN' && (
+                          <div className="flex gap-1.5 mt-1">
+                            {arbitrateId === d.id ? (
+                              <div className="flex-1 space-y-1">
+                                <textarea
+                                  className="w-full bg-realm-bg-600 border border-realm-bg-500 rounded px-2 py-1 text-xs text-realm-text-primary h-12 resize-none"
+                                  placeholder="Write your resolution..."
+                                  value={arbitrateText}
+                                  onChange={(e) => setArbitrateText(e.target.value)}
+                                />
+                                <div className="flex gap-1">
+                                  <RealmButton
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={() => arbitrateMutation.mutate({ disputeId: d.id, resolution: arbitrateText })}
+                                    disabled={arbitrateMutation.isPending || !arbitrateText.trim()}
+                                  >
+                                    Resolve
+                                  </RealmButton>
+                                  <RealmButton variant="secondary" size="sm" onClick={() => { setArbitrateId(null); setArbitrateText(''); }}>
+                                    Cancel
+                                  </RealmButton>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <RealmButton variant="primary" size="sm" onClick={() => setArbitrateId(d.id)}>
+                                  Arbitrate
+                                </RealmButton>
+                                <RealmButton
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => dismissMutation.mutate(d.id)}
+                                  disabled={dismissMutation.isPending}
+                                >
+                                  Dismiss
+                                </RealmButton>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Solimene: Referendums */}
+            {referendumsData && referendumsData.length > 0 && (
+              <div className="rounded-lg border border-realm-bg-600 bg-realm-bg-800 p-3 space-y-2">
+                <span className="text-xs font-display text-realm-text-primary flex items-center gap-1.5">
+                  <Vote className="w-3.5 h-3.5 text-realm-teal-400" />
+                  Referendums
+                </span>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {referendumsData.map((r) => {
+                    const isActive = r.status === 'VOTING';
+                    const timeLeft = isActive ? Math.max(0, Math.ceil((new Date(r.endsAt).getTime() - Date.now()) / (1000 * 60 * 60))) : 0;
+                    return (
+                      <div key={r.id} className="bg-realm-bg-700 rounded p-2 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-realm-text-primary">{r.question}</span>
+                          <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-sm border ${
+                            r.status === 'PASSED' ? 'text-green-400 border-green-400/30 bg-green-400/10' :
+                            r.status === 'FAILED' ? 'text-red-400 border-red-400/30 bg-red-400/10' :
+                            'text-yellow-400 border-yellow-400/30 bg-yellow-400/10'
+                          }`}>
+                            {r.status}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-realm-text-muted">
+                          Proposed by {r.proposedBy?.name ?? 'Unknown'} — {r.policyType.replace('_', ' ')}
+                        </p>
+                        <div className="flex items-center gap-3 text-[11px]">
+                          <span className="text-realm-success">For: {r.votesFor}</span>
+                          <span className="text-realm-danger">Against: {r.votesAgainst}</span>
+                          {isActive && <span className="text-realm-text-muted">{timeLeft}h remaining</span>}
+                        </div>
+                        {isActive && character?.homeTownId === templeData?.townId && (
+                          <div className="flex gap-1.5 mt-1">
+                            <RealmButton
+                              variant="primary"
+                              size="sm"
+                              onClick={() => voteRefMutation.mutate({ referendumId: r.id, vote: true })}
+                              disabled={voteRefMutation.isPending}
+                            >
+                              Vote For
+                            </RealmButton>
+                            <RealmButton
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => voteRefMutation.mutate({ referendumId: r.id, vote: false })}
+                              disabled={voteRefMutation.isPending}
+                            >
+                              Vote Against
+                            </RealmButton>
+                          </div>
+                        )}
+                        {voteRefMutation.isError && (
+                          <p className="text-[11px] text-realm-danger">{(voteRefMutation.error as any)?.response?.data?.error || 'Failed to vote'}</p>
+                        )}
+                        {voteRefMutation.isSuccess && (
+                          <p className="text-[11px] text-realm-success">{voteRefMutation.data.message}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Solimene: Propose Referendum (HP with shrine) */}
+            {isSolimeneHP && hasSolimeneShrine && (
+              <div className="rounded-lg border border-realm-bg-600 bg-realm-bg-800 p-3 space-y-2">
+                <span className="text-xs font-display text-realm-text-primary flex items-center gap-1.5">
+                  <Landmark className="w-3.5 h-3.5 text-realm-gold-400" />
+                  Binding Referendum
+                </span>
+                <p className="text-[11px] text-realm-text-muted">
+                  Propose a binding town-wide vote on a policy question. All residents can vote. Simple majority wins. 30-day cooldown.
+                </p>
+                {!showProposeRef ? (
+                  <RealmButton variant="primary" size="sm" onClick={() => setShowProposeRef(true)}>
+                    Propose Referendum
+                  </RealmButton>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      className="w-full bg-realm-bg-700 border border-realm-bg-500 rounded px-2 py-1 text-xs text-realm-text-primary"
+                      placeholder="Question (e.g. 'Should we lower the tax rate to 10%?')"
+                      value={refQuestion}
+                      onChange={(e) => setRefQuestion(e.target.value)}
+                    />
+                    <select
+                      className="w-full bg-realm-bg-700 border border-realm-bg-500 rounded px-2 py-1 text-xs text-realm-text-primary"
+                      value={refPolicyType}
+                      onChange={(e) => setRefPolicyType(e.target.value)}
+                    >
+                      <option value="tax_rate">Tax Rate</option>
+                      <option value="building_permits">Building Permits</option>
+                      <option value="trade_policy">Trade Policy</option>
+                    </select>
+                    <input
+                      className="w-full bg-realm-bg-700 border border-realm-bg-500 rounded px-2 py-1 text-xs text-realm-text-primary"
+                      placeholder={refPolicyType === 'tax_rate' ? 'Tax rate (e.g. 0.10)' : refPolicyType === 'building_permits' ? 'true or false' : 'Policy value (JSON)'}
+                      value={refPolicyValue}
+                      onChange={(e) => setRefPolicyValue(e.target.value)}
+                    />
+                    <div className="flex gap-1.5">
+                      <RealmButton
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                          let pv: any;
+                          if (refPolicyType === 'tax_rate') pv = { taxRate: parseFloat(refPolicyValue) };
+                          else if (refPolicyType === 'building_permits') pv = { buildingPermits: refPolicyValue === 'true' };
+                          else try { pv = JSON.parse(refPolicyValue); } catch { pv = { value: refPolicyValue }; }
+                          proposeRefMutation.mutate({ townId: templeData!.townId, question: refQuestion, policyType: refPolicyType, policyValue: pv });
+                        }}
+                        disabled={proposeRefMutation.isPending || !refQuestion.trim() || !refPolicyValue.trim()}
+                      >
+                        {proposeRefMutation.isPending ? 'Proposing...' : 'Submit Referendum'}
+                      </RealmButton>
+                      <RealmButton variant="secondary" size="sm" onClick={() => setShowProposeRef(false)}>
+                        Cancel
+                      </RealmButton>
+                    </div>
+                    {proposeRefMutation.isError && (
+                      <p className="text-[11px] text-realm-danger">{(proposeRefMutation.error as any)?.response?.data?.error || 'Failed to propose'}</p>
+                    )}
+                  </div>
                 )}
               </div>
             )}

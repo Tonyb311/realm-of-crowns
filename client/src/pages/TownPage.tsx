@@ -16,6 +16,7 @@ import {
   CheckCircle,
   Home,
   Package,
+  Scale,
 } from 'lucide-react';
 import api from '../services/api';
 import { getSocket } from '../services/socket';
@@ -212,6 +213,17 @@ export default function TownPage() {
     queryFn: async () => (await api.get(`/temple/summit-status/${townId}`)).data,
     enabled: !!townId,
     staleTime: 60000, // check once per minute
+  });
+
+  // Fetch active referendums for banner
+  const { data: activeReferendums } = useQuery<Array<{
+    id: string; question: string; status: string; endsAt: string;
+  }>>({
+    queryKey: ['temple', 'referendums', townId],
+    queryFn: async () => (await api.get(`/temple/referendums/${townId}`)).data,
+    enabled: !!townId,
+    staleTime: 60000,
+    select: (data) => data.filter((r: any) => r.status === 'VOTING'),
   });
 
   // Subscribe to player enter/leave town events for live updates
@@ -472,6 +484,21 @@ export default function TownPage() {
           </div>
         </div>
       )}
+
+      {/* Referendum Banner */}
+      {activeReferendums && activeReferendums.length > 0 && activeReferendums.map((r) => (
+        <div key={r.id} className="bg-realm-teal-500/10 border-b border-realm-teal-500/30">
+          <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-2 text-sm">
+              <Scale className="w-4 h-4 text-realm-teal-400 flex-shrink-0" />
+              <span className="text-realm-teal-400 font-display">A referendum is underway:</span>
+              <span className="text-realm-text-secondary text-xs">
+                &lsquo;{r.question}&rsquo; — Vote at the Temple or Town Hall
+              </span>
+            </div>
+          </div>
+        </div>
+      ))}
 
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">

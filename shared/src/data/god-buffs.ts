@@ -140,6 +140,23 @@ export const GOD_BUFFS: Record<string, GodBuff> = {
     },
     shrineEffects: { diplomaticSummit: 1 },
   },
+  solimene: {
+    personalBuffs: {
+      MINORITY: { electionIntegrityPercent: 0.05 },
+      CHAPTER: { electionIntegrityPercent: 0.10, disputeResolution: 1 },
+      ESTABLISHED: { electionIntegrityPercent: 0.15, disputeResolution: 1, fileFormalDispute: 1 },
+      DOMINANT: { electionIntegrityPercent: 0.20, disputeResolution: 1, fileFormalDispute: 1 },
+    },
+    townEffects: {
+      ESTABLISHED: { electionIntegrityPercent: 0.05 },
+      DOMINANT: { electionIntegrityPercent: 0.10 },
+    },
+    metricModifiers: {
+      ESTABLISHED: { ELECTION_INTEGRITY: 5 },
+      DOMINANT: { ELECTION_INTEGRITY: 10 },
+    },
+    shrineEffects: { bindingReferendum: 1 },
+  },
 };
 
 /** Get a character's personal religion buffs based on their god and chapter tier */
@@ -171,4 +188,7 @@ export const BUFF_LABELS: Record<string, string> = {
   reputationGainPercent: 'Reputation Gains',
   foreignTradePercent: 'Foreign Trade Bonus',
   reducedConversionCooldown: 'Reduced Conversion Cooldown',
+  electionIntegrityPercent: 'Election Integrity',
+  disputeResolution: 'Dispute Resolution',
+  fileFormalDispute: 'Formal Disputes',
 };
