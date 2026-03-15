@@ -33,6 +33,10 @@ const surrenderSchema = z.object({
   warrantId: z.string().min(1),
 });
 
+const postBailSchema = z.object({
+  caseId: z.string().min(1),
+});
+
 // =========================================================================
 // POST /issue-warrant — Sheriff issues a warrant
 // =========================================================================
@@ -248,6 +252,55 @@ router.post('/surrender', authGuard, characterGuard, validate(surrenderSchema), 
   } catch (error) {
     if (handleDbError(error, res, 'justice-surrender', req)) return;
     logRouteError(req, 500, 'Surrender error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// =========================================================================
+// POST /post-bail — Arrested character posts bail
+// =========================================================================
+router.post('/post-bail', authGuard, characterGuard, validate(postBailSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { caseId } = req.body;
+    const character = req.character!;
+
+    const courtCase = await db.query.courtCases.findFirst({
+      where: eq(courtCases.id, caseId),
+    });
+    if (!courtCase) return res.status(404).json({ error: 'Court case not found' });
+    if (courtCase.status !== 'PENDING') {
+      return res.status(400).json({ error: `Case is already ${courtCase.status.toLowerCase()}` });
+    }
+    if (courtCase.bailPaid) {
+      return res.status(400).json({ error: 'Bail has already been paid' });
+    }
+    if (courtCase.defendantId !== character.id) {
+      return res.status(403).json({ error: 'Only the defendant can post bail' });
+    }
+
+    const bailAmount = JUSTICE_CONFIG.bailAmount;
+    if (character.gold < bailAmount) {
+      return res.status(400).json({ error: `Insufficient gold. Need ${bailAmount}g, have ${character.gold}g` });
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.update(characters)
+        .set({ gold: sql`${characters.gold} - ${bailAmount}` })
+        .where(eq(characters.id, character.id));
+
+      await tx.update(courtCases)
+        .set({ bailPaid: true, bailAmount })
+        .where(eq(courtCases.id, caseId));
+    });
+
+    const updated = await db.query.courtCases.findFirst({ where: eq(courtCases.id, caseId) });
+
+    logTownEvent(courtCase.townId, 'GOVERNANCE', 'Bail Posted', `${character.name} posted ${bailAmount}g bail`, character.id).catch(() => {});
+
+    return res.json({ courtCase: updated });
+  } catch (error) {
+    if (handleDbError(error, res, 'justice-post-bail', req)) return;
+    logRouteError(req, 500, 'Post bail error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

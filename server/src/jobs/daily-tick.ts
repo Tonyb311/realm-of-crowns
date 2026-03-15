@@ -14,6 +14,7 @@ import {
   elections, electionVotes, electionCandidates, impeachments, towns, kingdoms,
   worldEvents, combatEncounterLogs, notifications, recipes,
   ownedAssets, livestock, jobs, houses, houseStorage, noticeBoardPosts, churchChapters, gods, townMetrics, townProjects, townUpgrades, travelLogs,
+  warrants, courtCases,
 } from '@database/tables';
 import { PROJECT_TYPES, UPGRADE_TYPES, DEGRADATION_THRESHOLD_DAYS, type ProjectType, type UpgradeType } from '@shared/data/town-projects-config';
 import { processSpoilage, processAutoConsumption, getHungerModifier, processRevenantSustenance, processForgebornMaintenance } from '../services/food-system';
@@ -49,6 +50,7 @@ import { getCharacterReligionContext, resolveReligionBuffs, getTaxReductionFromC
 import { addRacialReputationWithBonus } from '../services/reputation';
 import { REPUTATION_GAINS } from '@shared/data/reputation-config';
 import { ASSET_TIERS, LIVESTOCK_DEFINITIONS, HUNGER_CONSTANTS } from '@shared/data/assets';
+import { JUSTICE_CONFIG, CAPTURE_FORMULA } from '@shared/data/justice-config';
 import { getCottageTier } from '@shared/data/cottage-tiers';
 import {
   emitDailyReportReady,
@@ -488,6 +490,152 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   // -----------------------------------------------------------------------
   await runStep('Travel Movement', 2, async () => {
     // Travel now handled by dedicated travel-tick.ts cron job
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 2.5: Warrant Capture Rolls + Expiry + Auto-Release
+  // -----------------------------------------------------------------------
+  await runStep('Warrant Processing', 2.5, async () => {
+    const now = new Date();
+
+    // ── 2.5a: Capture Rolls ──────────────────────────
+    const activeWarrants = await db.query.warrants.findMany({
+      where: eq(warrants.status, 'ACTIVE'),
+      with: {
+        target: { columns: { id: true, currentTownId: true, stats: true, level: true, name: true } },
+        sheriff: { columns: { id: true, stats: true, name: true } },
+      },
+    });
+
+    const allPolicies = await db.query.townPolicies.findMany();
+    const policyByTown = new Map(allPolicies.map(p => [p.townId, p]));
+
+    const lawMetrics = await db.query.townMetrics.findMany({
+      where: eq(townMetrics.metricType, 'LAW_ENFORCEMENT'),
+    });
+    const lawByTown = new Map(lawMetrics.map(m => [m.townId, m.effectiveValue]));
+
+    let capturedCount = 0;
+    let evadedCount = 0;
+
+    for (const warrant of activeWarrants) {
+      const target = warrant.target;
+      if (!target?.currentTownId) continue; // target is traveling, skip
+
+      const targetTownId = target.currentTownId;
+      const warrantTownId = warrant.townId;
+
+      // Check enforceability
+      let enforceable = false;
+
+      if (targetTownId === warrantTownId) {
+        enforceable = true;
+      } else {
+        const targetPolicy = policyByTown.get(targetTownId);
+        const warrantPolicy = policyByTown.get(warrantTownId);
+        const targetHasSheriff = !!targetPolicy?.sheriffId;
+        const warrantTownPartners = (warrantPolicy?.tradePolicy as any)?.mutualDefensePartners ?? [];
+        if (targetHasSheriff && warrantTownPartners.includes(targetTownId)) {
+          enforceable = true;
+        }
+      }
+
+      if (!enforceable) continue;
+
+      // Calculate capture chance
+      const sheriffStats = warrant.sheriff.stats as any;
+      const targetStats = target.stats as any;
+      const sheriffWisMod = getStatModifier(sheriffStats?.wis ?? 10);
+      const lawEnforcement = lawByTown.get(targetTownId) ?? 50;
+      const targetDexMod = getStatModifier(targetStats?.dex ?? 10);
+
+      let captureChance = JUSTICE_CONFIG.baseCaptureChance
+        + (sheriffWisMod * CAPTURE_FORMULA.wisWeight / 100)
+        + (lawEnforcement * CAPTURE_FORMULA.leWeight / 100)
+        - (targetDexMod * CAPTURE_FORMULA.dexWeight / 100)
+        - (target.level * CAPTURE_FORMULA.levelWeight / 100);
+
+      // Martial law bonus
+      const targetTradePolicy = policyByTown.get(targetTownId)?.tradePolicy as any;
+      if (targetTradePolicy?.martialLawUntil && new Date(targetTradePolicy.martialLawUntil) > now) {
+        captureChance += JUSTICE_CONFIG.martialLawCaptureBonus;
+      }
+
+      captureChance = Math.max(JUSTICE_CONFIG.minCaptureChance, Math.min(JUSTICE_CONFIG.maxCaptureChance, captureChance));
+
+      if (Math.random() < captureChance) {
+        // CAPTURED
+        await db.transaction(async (tx) => {
+          await tx.update(warrants).set({
+            status: 'CAPTURED',
+            capturedInTownId: targetTownId,
+            resolvedAt: now.toISOString(),
+          }).where(eq(warrants.id, warrant.id));
+
+          // Look up kingdom via town → region
+          const town = await tx.query.towns.findFirst({
+            where: eq(towns.id, targetTownId),
+            with: { region: { columns: { kingdomId: true } } },
+          });
+          const kingdomId = (town?.region as any)?.kingdomId;
+          if (!kingdomId) return;
+
+          await tx.insert(courtCases).values({
+            id: crypto.randomUUID(),
+            warrantId: warrant.id,
+            townId: targetTownId,
+            kingdomId,
+            defendantId: target.id,
+            sheriffId: warrant.sheriffId,
+            charge: warrant.charge,
+            evidence: warrant.evidence,
+            status: 'PENDING',
+            arrestedAt: now.toISOString(),
+            autoReleaseAt: new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString(),
+            bailAmount: JUSTICE_CONFIG.bailAmount,
+          });
+        });
+
+        logTownEvent(targetTownId, 'JUSTICE', `${target.name} Arrested`, `${target.name} has been captured on a warrant for: ${warrant.charge}`, target.id).catch(() => {});
+        capturedCount++;
+      } else {
+        evadedCount++;
+      }
+    }
+
+    // ── 2.5b: Warrant Expiry ──────────────────────────
+    const expiredWarrants = await db.query.warrants.findMany({
+      where: and(eq(warrants.status, 'ACTIVE'), lte(warrants.expiresAt, now.toISOString())),
+    });
+    for (const warrant of expiredWarrants) {
+      await db.update(warrants).set({ status: 'EXPIRED', resolvedAt: now.toISOString() }).where(eq(warrants.id, warrant.id));
+      logTownEvent(warrant.townId, 'JUSTICE', 'Warrant Expired', `Warrant for ${warrant.charge} expired after ${JUSTICE_CONFIG.warrantExpiryDays} days`, warrant.targetId).catch(() => {});
+    }
+
+    // ── 2.5c: Court Case Auto-Release ──────────────────────────
+    const overdueCases = await db.query.courtCases.findMany({
+      where: and(eq(courtCases.status, 'PENDING'), lte(courtCases.autoReleaseAt, now.toISOString())),
+    });
+    for (const courtCase of overdueCases) {
+      await db.transaction(async (tx) => {
+        await tx.update(courtCases).set({
+          status: 'AUTO_RELEASED',
+          ruledAt: now.toISOString(),
+          verdict: 'Case auto-dismissed — judge did not rule within 48 hours',
+        }).where(eq(courtCases.id, courtCase.id));
+
+        // Refund bail if paid
+        if (courtCase.bailPaid && courtCase.bailAmount) {
+          await tx.update(characters).set({
+            gold: sql`${characters.gold} + ${courtCase.bailAmount}`,
+          }).where(eq(characters.id, courtCase.defendantId));
+        }
+      });
+
+      logTownEvent(courtCase.townId, 'JUSTICE', 'Case Auto-Dismissed', `Case for "${courtCase.charge}" auto-dismissed — judge did not rule in time`, courtCase.defendantId).catch(() => {});
+    }
+
+    console.log(`[DailyTick]   Warrants: ${capturedCount} captured, ${evadedCount} evaded, ${expiredWarrants.length} expired. Cases: ${overdueCases.length} auto-released.`);
   });
 
   // -----------------------------------------------------------------------
