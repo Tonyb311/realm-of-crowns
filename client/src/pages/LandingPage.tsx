@@ -61,6 +61,19 @@ const VIGNETTES = [
 ];
 
 // ---------------------------------------------------------------------------
+// Race data
+// ---------------------------------------------------------------------------
+const CORE_RACES = [
+  { name: 'Humans', desc: 'Empire builders of the Verdant Heartlands, ambitious to a fault and convinced the world was built for them.' },
+  { name: 'Elves', desc: 'Ancient guardians of Silverwood who remember grudges older than most civilizations.' },
+  { name: 'Dwarves', desc: 'Mountain-folk of Ironvault Deeps whose craftsmanship is legend and whose stubbornness is worse.' },
+  { name: 'Orcs', desc: 'Honor-bound warriors of the Bloodstone Steppe, fierce in battle and first to keep their word.' },
+  { name: 'Drakonid', desc: 'Scaled descendants of dragonkind from the Frozen Reaches, carrying storm and fire in their breath.' },
+  { name: 'Nethkin', desc: 'Shadow-touched outcasts of Vel\u2019Naris, wielding dark gifts with the cunning of those who\u2019ve had to survive.' },
+  { name: 'Harthfolk', desc: 'Cheerful traders of the Crossroads Freehold, welcome at every table and underestimated at every one.' },
+];
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 export default function LandingPage() {
@@ -146,7 +159,7 @@ export default function LandingPage() {
             animate="visible"
             className="text-sm sm:text-base text-realm-text-secondary mb-3 px-4 max-w-xl mx-auto"
           >
-            A persistent world that moves at the pace of life. One action per day. Every choice remembered.
+            A medieval fantasy world that moves at the pace of life. Swords, spells, trade routes, and thrones &mdash; one action per day.
           </motion.p>
 
           {/* Identity line */}
@@ -243,7 +256,7 @@ export default function LandingPage() {
             >
               <h3 className="font-display text-lg text-realm-gold-400 mb-3">The Day&apos;s Work</h3>
               <p className="text-sm text-realm-text-secondary leading-relaxed mb-3">
-                Craft, trade, travel, fight. Elect mayors who can tax and betray. Build an economy where no one is self-sufficient and everyone depends on each other.
+                Smelt ore. Brew a potion. Travel dangerous roads where bandits and beasts test your steel. Elect mayors who can tax and betray. Build an economy where no one is self-sufficient and everyone depends on each other.
               </p>
               <p className="text-xs text-realm-text-muted italic">
                 One action per day. The world moves whether you act or not &mdash; make yours count.
@@ -264,7 +277,7 @@ export default function LandingPage() {
                 <h3 className="font-display text-lg text-realm-gold-400">The Town Square</h3>
               </div>
               <p className="text-sm text-realm-text-secondary leading-relaxed mb-3">
-                Post a political manifesto. Call out the mayor. Rally votes for your candidate. Spread a rumor that moves the market. The boards aren&apos;t where you read the drama &mdash; they&apos;re where you make it.
+                Post a manifesto against the king&apos;s tariffs. Call out the mayor for raiding the treasury. Rally your guild to swing the vote. Spread a rumor that crashes the iron market. The boards aren&apos;t where you read the drama &mdash; they&apos;re where you make it.
               </p>
               <p className="text-xs text-realm-text-muted italic">
                 The connective tissue that makes sixty-eight towns feel like one living world.
@@ -282,7 +295,7 @@ export default function LandingPage() {
             >
               <h3 className="font-display text-lg text-realm-gold-400 mb-3">The Tavern</h3>
               <p className="text-sm text-realm-text-secondary leading-relaxed mb-3">
-                Open a thread. Write your character into a scene. When something contested happens, roll &mdash; your real stats, your real gear. The character sheet does the heavy lifting.
+                Open a thread in Aethermere&apos;s forums. Write your character into a scene &mdash; a moonlit negotiation, a duel in the ruins, a feast before the siege. When something contested happens, roll. Your real stats. Your real gear. The character sheet does the heavy lifting.
               </p>
               <p className="text-xs text-realm-text-muted italic">
                 Play-by-post roleplay where your character isn&apos;t a fiction &mdash; it&apos;s a record of everything you&apos;ve earned.
@@ -403,6 +416,111 @@ export default function LandingPage() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ================================================================= */}
+      {/* ROLE ARCHETYPES                                                   */}
+      {/* ================================================================= */}
+      <section className="py-10 sm:py-12 px-6 relative bg-realm-bg-900">
+        <div className="max-w-2xl mx-auto text-center">
+          <motion.h2
+            variants={fadeUp}
+            custom={0}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-60px' }}
+            className="font-display text-2xl sm:text-3xl text-realm-gold-400 mb-6"
+          >
+            What Will You Become?
+          </motion.h2>
+
+          <motion.p
+            variants={fadeUp}
+            custom={1}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-40px' }}
+            className="font-display text-xl sm:text-2xl text-realm-text-primary/90 leading-relaxed mb-6"
+          >
+            Forge a sword at dawn. Campaign for mayor by midday. Lead a prayer at the temple of Solarius before dusk. Rob a merchant on the road between towns. Brew a healing potion from herbs you gathered yesterday. Start a trade war that bankrupts a rival guild. Betray the council that elected you. Repent to a god who remembers everything.
+          </motion.p>
+
+          <motion.div
+            variants={fadeUp}
+            custom={2}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-40px' }}
+          >
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <div className="h-px w-12 bg-realm-gold-600/25" />
+              <div className="w-1.5 h-1.5 rotate-45 border border-realm-gold-500/40" />
+              <div className="h-px w-12 bg-realm-gold-600/25" />
+            </div>
+            <p className="text-sm text-realm-text-secondary leading-relaxed">
+              Seven classes. Twenty-nine professions. Twelve gods. Elected kings and corrupt sheriffs. No character does it all &mdash; but yours will do things no one else can.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ================================================================= */}
+      {/* RACES — THE PEOPLES OF AETHERMERE                                 */}
+      {/* ================================================================= */}
+      <section className="py-12 sm:py-14 px-6 relative bg-realm-bg-800">
+        <div className="max-w-3xl mx-auto">
+          <motion.h2
+            variants={fadeUp}
+            custom={0}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-80px' }}
+            className="font-display text-2xl sm:text-3xl md:text-4xl text-realm-gold-400 text-center mb-3"
+          >
+            The Peoples of Aethermere
+          </motion.h2>
+          <motion.p
+            variants={fadeUp}
+            custom={1}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-80px' }}
+            className="text-center text-realm-text-muted text-xs uppercase tracking-wider mb-8"
+          >
+            Seven peoples at launch. Thirteen more awakening.
+          </motion.p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+            {CORE_RACES.map((race, i) => (
+              <motion.div
+                key={race.name}
+                custom={i}
+                variants={cardFade}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: '-30px' }}
+                className="flex items-start gap-3 py-2"
+              >
+                <div className="w-px h-full min-h-[2rem] shrink-0 bg-realm-gold-600/25 mt-1" />
+                <div>
+                  <span className="font-display text-sm text-realm-gold-400">{race.name}</span>
+                  <p className="text-xs text-realm-text-secondary leading-relaxed mt-0.5">{race.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.p
+            variants={fadeUp}
+            custom={4}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-30px' }}
+            className="text-center text-xs text-realm-text-muted mt-8 leading-relaxed max-w-xl mx-auto"
+          >
+            Thirteen more peoples stir at the edges of Aethermere &mdash; Half-Elves, Half-Orcs, Gnomes, Goliath, Beastfolk, Aasimar, Nightborne, Mosskin, Forgeborn, Elementari, Revenant, Changeling, and Kenku. Their stories are still being written.
+          </motion.p>
         </div>
       </section>
 
