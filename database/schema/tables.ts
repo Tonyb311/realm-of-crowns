@@ -69,6 +69,7 @@ export const kingdoms = pgTable("kingdoms", {
 	id: text().primaryKey().notNull(),
 	name: text().notNull(),
 	rulerId: text("ruler_id").references((): AnyPgColumn => characters.id, { onUpdate: "cascade", onDelete: "set null" }),
+	judgeId: text("judge_id").references((): AnyPgColumn => characters.id, { onUpdate: "cascade", onDelete: "set null" }),
 	capitalTownId: text("capital_town_id"),
 	treasury: integer().default(0).notNull(),
 	laws: jsonb().default([]).notNull(),
@@ -2908,3 +2909,101 @@ export const townTreatyVotes = pgTable("town_treaty_votes", {
 	}).onUpdate("cascade").onDelete("cascade"),
 ]);
 
+// ============================================================
+// JUSTICE — Warrants & Court Cases
+// ============================================================
+
+export const warrants = pgTable("warrants", {
+	id: text().primaryKey().notNull(),
+	townId: text("town_id").notNull(),
+	sheriffId: text("sheriff_id").notNull(),
+	targetId: text("target_id").notNull(),
+	charge: text().notNull(),
+	evidence: text().notNull(),
+	status: text().notNull().default('ACTIVE'),
+	capturedInTownId: text("captured_in_town_id"),
+	issuedAt: timestamp("issued_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	expiresAt: timestamp("expires_at", { precision: 3, mode: 'string' }).notNull(),
+	resolvedAt: timestamp("resolved_at", { precision: 3, mode: 'string' }),
+}, (table) => [
+	index("warrants_target_id_idx").using("btree", table.targetId.asc().nullsLast().op("text_ops")),
+	index("warrants_status_idx").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	index("warrants_town_id_idx").using("btree", table.townId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+		columns: [table.townId],
+		foreignColumns: [towns.id],
+		name: "warrants_town_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.sheriffId],
+		foreignColumns: [characters.id],
+		name: "warrants_sheriff_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.targetId],
+		foreignColumns: [characters.id],
+		name: "warrants_target_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.capturedInTownId],
+		foreignColumns: [towns.id],
+		name: "warrants_captured_in_town_id_fkey"
+	}).onUpdate("cascade").onDelete("set null"),
+]);
+
+export const courtCases = pgTable("court_cases", {
+	id: text().primaryKey().notNull(),
+	warrantId: text("warrant_id").notNull(),
+	townId: text("town_id").notNull(),
+	kingdomId: text("kingdom_id").notNull(),
+	defendantId: text("defendant_id").notNull(),
+	sheriffId: text("sheriff_id").notNull(),
+	judgeId: text("judge_id"),
+	charge: text().notNull(),
+	evidence: text().notNull(),
+	status: text().notNull().default('PENDING'),
+	verdict: text(),
+	punishment: text(),
+	punishmentDetails: jsonb("punishment_details"),
+	bailAmount: integer("bail_amount"),
+	bailPaid: boolean("bail_paid").notNull().default(false),
+	compensationPaid: integer("compensation_paid"),
+	arrestedAt: timestamp("arrested_at", { precision: 3, mode: 'string' }).notNull(),
+	ruledAt: timestamp("ruled_at", { precision: 3, mode: 'string' }),
+	autoReleaseAt: timestamp("auto_release_at", { precision: 3, mode: 'string' }).notNull(),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	index("court_cases_defendant_id_idx").using("btree", table.defendantId.asc().nullsLast().op("text_ops")),
+	index("court_cases_status_idx").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	index("court_cases_kingdom_id_idx").using("btree", table.kingdomId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+		columns: [table.warrantId],
+		foreignColumns: [warrants.id],
+		name: "court_cases_warrant_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.townId],
+		foreignColumns: [towns.id],
+		name: "court_cases_town_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.kingdomId],
+		foreignColumns: [kingdoms.id],
+		name: "court_cases_kingdom_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.defendantId],
+		foreignColumns: [characters.id],
+		name: "court_cases_defendant_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.sheriffId],
+		foreignColumns: [characters.id],
+		name: "court_cases_sheriff_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.judgeId],
+		foreignColumns: [characters.id],
+		name: "court_cases_judge_id_fkey"
+	}).onUpdate("cascade").onDelete("set null"),
+]);

@@ -352,7 +352,7 @@ export async function calculateTensionIndex(
   const kingdomsList = await db.query.kingdoms.findMany({
     where: inArray(kingdoms.id, [kingdomId1, kingdomId2]),
     with: {
-      character: { columns: { race: true } },
+      ruler: { columns: { race: true } },
     },
   });
 
@@ -361,11 +361,11 @@ export async function calculateTensionIndex(
   const k1 = kingdomsList.find((k: any) => k.id === kingdomId1)!;
   const k2 = kingdomsList.find((k: any) => k.id === kingdomId2)!;
 
-  if (k1.character && k2.character) {
+  if (k1.ruler && k2.ruler) {
     const relation = await db.query.racialRelations.findFirst({
       where: or(
-        and(eq(racialRelations.race1, k1.character.race), eq(racialRelations.race2, k2.character.race)),
-        and(eq(racialRelations.race1, k2.character.race), eq(racialRelations.race2, k1.character.race)),
+        and(eq(racialRelations.race1, k1.ruler.race), eq(racialRelations.race2, k2.ruler.race)),
+        and(eq(racialRelations.race1, k2.ruler.race), eq(racialRelations.race2, k1.ruler.race)),
       ),
     });
 

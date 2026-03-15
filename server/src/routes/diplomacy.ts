@@ -61,7 +61,7 @@ const negotiatePeaceSchema = z.object({
 async function getRulerKingdom(characterId: string) {
   const k = await db.query.kingdoms.findFirst({
     where: eq(kingdoms.rulerId, characterId),
-    with: { character: true },
+    with: { ruler: true },
   });
   return k;
 }
@@ -198,10 +198,10 @@ router.post('/propose-treaty', authGuard, characterGuard, validate(proposeTreaty
 
     const targetKingdom = await db.query.kingdoms.findFirst({
       where: eq(kingdoms.id, targetKingdomId),
-      with: { character: true },
+      with: { ruler: true },
     });
     if (!targetKingdom) return res.status(404).json({ error: 'Target kingdom not found' });
-    if (!targetKingdom.character) return res.status(400).json({ error: 'Target kingdom has no ruler' });
+    if (!targetKingdom.ruler) return res.status(400).json({ error: 'Target kingdom has no ruler' });
 
     // Check for existing pending or active treaty of same type between these kingdoms
     const allTreaties = await db.query.treaties.findMany({
@@ -220,8 +220,8 @@ router.post('/propose-treaty', authGuard, characterGuard, validate(proposeTreaty
     }
 
     // Get racial relation between the two kingdoms' rulers' races
-    const myRace = myKingdom.character!.race as Race;
-    const targetRace = targetKingdom.character.race as Race;
+    const myRace = myKingdom.ruler!.race as Race;
+    const targetRace = targetKingdom.ruler.race as Race;
     const relation = await getRelation(myRace, targetRace);
     const currentStatus = relation?.status ?? 'NEUTRAL';
 
@@ -252,7 +252,7 @@ router.post('/propose-treaty', authGuard, characterGuard, validate(proposeTreaty
       metadata: { changelingDiplomat },
     }).returning();
 
-    await logDiplomacyEvent('PROPOSE_TREATY', character.id, targetKingdom.character.id, {
+    await logDiplomacyEvent('PROPOSE_TREATY', character.id, targetKingdom.ruler.id, {
       treatyId: treaty.id,
       type,
       goldCost: validation.goldCost,
@@ -312,8 +312,8 @@ router.post('/respond-treaty/:proposalId', authGuard, characterGuard, validate(r
     const treaty = await db.query.treaties.findFirst({
       where: eq(treaties.id, proposalId),
       with: {
-        kingdom_proposerKingdomId: { with: { character: true } },
-        kingdom_receiverKingdomId: { with: { character: true } },
+        kingdom_proposerKingdomId: { with: { ruler: true } },
+        kingdom_receiverKingdomId: { with: { ruler: true } },
       },
     });
 
@@ -370,8 +370,8 @@ router.post('/respond-treaty/:proposalId', authGuard, characterGuard, validate(r
     // If res was already sent by the catch above, stop here
     if (res.headersSent) return;
 
-    const proposerRace = treaty.kingdom_proposerKingdomId.character?.race;
-    const receiverRace = treaty.kingdom_receiverKingdomId.character?.race;
+    const proposerRace = treaty.kingdom_proposerKingdomId.ruler?.race;
+    const receiverRace = treaty.kingdom_receiverKingdomId.ruler?.race;
 
     await logDiplomacyEvent(
       treaty.type as 'TRADE_AGREEMENT' | 'NON_AGGRESSION_PACT' | 'ALLIANCE',
@@ -416,7 +416,7 @@ router.post('/declare-war', authGuard, characterGuard, validate(declareWarSchema
 
     const targetKingdom = await db.query.kingdoms.findFirst({
       where: eq(kingdoms.id, targetKingdomId),
-      with: { character: true },
+      with: { ruler: true },
     });
     if (!targetKingdom) return res.status(404).json({ error: 'Target kingdom not found' });
 
@@ -433,8 +433,8 @@ router.post('/declare-war', authGuard, characterGuard, validate(declareWarSchema
     }
 
     // Worsen racial relation
-    const myRace = myKingdom.character!.race as Race;
-    const targetRace = targetKingdom.character?.race as Race;
+    const myRace = myKingdom.ruler!.race as Race;
+    const targetRace = targetKingdom.ruler?.race as Race;
 
     let newRelationStatus: RelationStatus | null = null;
 
@@ -473,7 +473,7 @@ router.post('/declare-war', authGuard, characterGuard, validate(declareWarSchema
       }
     });
 
-    const targetCharId = targetKingdom.character?.id;
+    const targetCharId = targetKingdom.ruler?.id;
     if (targetCharId) {
       await logDiplomacyEvent('DECLARE_WAR', character.id, targetCharId, {
         attackerKingdom: myKingdom.name,
@@ -511,8 +511,8 @@ router.post('/break-treaty/:treatyId', authGuard, characterGuard, async (req: Au
     const treaty = await db.query.treaties.findFirst({
       where: eq(treaties.id, treatyId),
       with: {
-        kingdom_proposerKingdomId: { with: { character: true } },
-        kingdom_receiverKingdomId: { with: { character: true } },
+        kingdom_proposerKingdomId: { with: { ruler: true } },
+        kingdom_receiverKingdomId: { with: { ruler: true } },
       },
     });
 
@@ -542,8 +542,8 @@ router.post('/break-treaty/:treatyId', authGuard, characterGuard, async (req: Au
         .where(eq(kingdoms.id, breakerKingdom.id));
 
       // Worsen racial relation
-      const breakerRace = breakerKingdom.character?.race as Race;
-      const otherRace = otherKingdom.character?.race as Race;
+      const breakerRace = breakerKingdom.ruler?.race as Race;
+      const otherRace = otherKingdom.ruler?.race as Race;
       if (breakerRace && otherRace) {
         const relation = await getRelation(breakerRace, otherRace);
         const currentStatus = relation?.status ?? 'NEUTRAL';
@@ -553,7 +553,7 @@ router.post('/break-treaty/:treatyId', authGuard, characterGuard, async (req: Au
       }
     });
 
-    const targetCharId = otherKingdom.character?.id;
+    const targetCharId = otherKingdom.ruler?.id;
     if (targetCharId) {
       await logDiplomacyEvent('BREAK_TREATY', character.id, targetCharId, {
         treatyId: treaty.id,
@@ -778,8 +778,8 @@ router.post('/wars/:id/negotiate-peace', authGuard, characterGuard, validate(neg
     const war = await db.query.wars.findFirst({
       where: eq(wars.id, id),
       with: {
-        kingdom_attackerKingdomId: { with: { character: true } },
-        kingdom_defenderKingdomId: { with: { character: true } },
+        kingdom_attackerKingdomId: { with: { ruler: true } },
+        kingdom_defenderKingdomId: { with: { ruler: true } },
       },
     });
 

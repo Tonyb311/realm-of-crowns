@@ -54,6 +54,7 @@ import inventoryRouter from './inventory';
 import noticeBoardRouter from './notice-board';
 import blackMarketRouter from './black-market';
 import treatiesRouter from './treaties';
+import justiceRouter from './justice';
 
 const router = Router();
 
@@ -113,5 +114,6 @@ router.use('/temple', templeRouter);
 router.use('/town-metrics', townMetricsRouter);
 router.use('/black-market', blackMarketRouter);
 router.use('/treaties', treatiesRouter);
+router.use('/justice', justiceRouter);
 
 export default router;

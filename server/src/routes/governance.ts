@@ -730,7 +730,7 @@ router.get('/kingdom/:kingdomId', authGuard, characterGuard, requireTown, async 
     const kingdom = await db.query.kingdoms.findFirst({
       where: eq(kingdoms.id, kingdomId),
       with: {
-        character: { columns: { id: true, name: true, level: true } }, // ruler
+        ruler: { columns: { id: true, name: true, level: true } },
         laws: {
           with: {
             character: { columns: { id: true, name: true } }, // enactedBy
@@ -787,7 +787,7 @@ router.get('/kingdom/:kingdomId', authGuard, characterGuard, requireTown, async 
         id: kingdom.id,
         name: kingdom.name,
         treasury: kingdom.treasury,
-        ruler: kingdom.character, // ruler via kingdoms.rulerId
+        ruler: kingdom.ruler,
         activeLaws,
         activeWars: [...activeWarsAttacking, ...activeWarsDefending],
         council: kingdom.councilMembers.map(cm => ({

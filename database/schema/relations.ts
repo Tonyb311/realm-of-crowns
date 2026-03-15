@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { characters, characterActiveEffects, characterEquipment, items, inventories, professionXp, towns, townResources, regions, regionBorders, diplomacyEvents, kingdoms, buildings, buildingConstructions, itemTemplates, priceHistories, caravans, elections, electionVotes, guilds, guildMembers, questProgress, quests, combatSessions, combatLogs, combatParticipants, notifications, racialAbilityCooldowns, changelingDisguises, achievements, playerAchievements, forgebornMaintenance, playerProfessions, craftingActions, recipes, travelRoutes, auctionCycles, marketListings, friends, laws, messages, electionCandidates, impeachments, impeachmentVotes, townTreasuries, councilMembers, townPolicies, abilities, characterAbilities, npcs, characterAppearances, users, exclusiveZones, gatheringActions, resources, wars, treaties, petitions, petitionSignatures, dailyActions, serviceActions, loans, serviceReputations, lawVotes, dailyReports, travelGroups, parties, travelNodes, travelGroupMembers, characterTravelStates, combatEncounterLogs, simulationRuns, groupTravelStates, partyMembers, partyInvitations, marketBuyOrders, tradeTransactions, ownedAssets, livestock, houses, houseStorage, jobs, monsters, droppedItems, deletionLogs, innMenu, noticeBoardPosts, gods, churchChapters, townMetrics, blackMarketListings, racialReputations, disputes, referendums, referendumVotes, townHistoryLog, townProjects, townUpgrades, itemPriceCeilings, townProclamations, travelLogs, townTreaties, townTreatyVotes } from "./tables";
+import { characters, characterActiveEffects, characterEquipment, items, inventories, professionXp, towns, townResources, regions, regionBorders, diplomacyEvents, kingdoms, buildings, buildingConstructions, itemTemplates, priceHistories, caravans, elections, electionVotes, guilds, guildMembers, questProgress, quests, combatSessions, combatLogs, combatParticipants, notifications, racialAbilityCooldowns, changelingDisguises, achievements, playerAchievements, forgebornMaintenance, playerProfessions, craftingActions, recipes, travelRoutes, auctionCycles, marketListings, friends, laws, messages, electionCandidates, impeachments, impeachmentVotes, townTreasuries, councilMembers, townPolicies, abilities, characterAbilities, npcs, characterAppearances, users, exclusiveZones, gatheringActions, resources, wars, treaties, petitions, petitionSignatures, dailyActions, serviceActions, loans, serviceReputations, lawVotes, dailyReports, travelGroups, parties, travelNodes, travelGroupMembers, characterTravelStates, combatEncounterLogs, simulationRuns, groupTravelStates, partyMembers, partyInvitations, marketBuyOrders, tradeTransactions, ownedAssets, livestock, houses, houseStorage, jobs, monsters, droppedItems, deletionLogs, innMenu, noticeBoardPosts, gods, churchChapters, townMetrics, blackMarketListings, racialReputations, disputes, referendums, referendumVotes, townHistoryLog, townProjects, townUpgrades, itemPriceCeilings, townProclamations, travelLogs, townTreaties, townTreatyVotes, warrants, courtCases } from "./tables";
 
 export const characterEquipmentRelations = relations(characterEquipment, ({one}) => ({
 	character: one(characters, {
@@ -329,9 +329,15 @@ export const diplomacyEventsRelations = relations(diplomacyEvents, ({one}) => ({
 }));
 
 export const kingdomsRelations = relations(kingdoms, ({one, many}) => ({
-	character: one(characters, {
+	ruler: one(characters, {
 		fields: [kingdoms.rulerId],
-		references: [characters.id]
+		references: [characters.id],
+		relationName: "kingdoms_rulerId_characters_id"
+	}),
+	judge: one(characters, {
+		fields: [kingdoms.judgeId],
+		references: [characters.id],
+		relationName: "kingdoms_judgeId_characters_id"
 	}),
 	regions: many(regions),
 	elections: many(elections),
@@ -350,6 +356,7 @@ export const kingdomsRelations = relations(kingdoms, ({one, many}) => ({
 	treaties_receiverKingdomId: many(treaties, {
 		relationName: "treaties_receiverKingdomId_kingdoms_id"
 	}),
+	courtCases: many(courtCases),
 }));
 
 export const buildingsRelations = relations(buildings, ({one, many}) => ({
@@ -1422,5 +1429,64 @@ export const townTreatyVotesRelations = relations(townTreatyVotes, ({one}) => ({
 	character: one(characters, {
 		fields: [townTreatyVotes.characterId],
 		references: [characters.id],
+	}),
+}));
+
+// ============================================================
+// JUSTICE — Warrants & Court Cases
+// ============================================================
+
+export const warrantsRelations = relations(warrants, ({one}) => ({
+	town: one(towns, {
+		fields: [warrants.townId],
+		references: [towns.id],
+		relationName: "warrants_townId_towns_id",
+	}),
+	sheriff: one(characters, {
+		fields: [warrants.sheriffId],
+		references: [characters.id],
+		relationName: "warrants_sheriffId_characters_id",
+	}),
+	target: one(characters, {
+		fields: [warrants.targetId],
+		references: [characters.id],
+		relationName: "warrants_targetId_characters_id",
+	}),
+	capturedInTown: one(towns, {
+		fields: [warrants.capturedInTownId],
+		references: [towns.id],
+		relationName: "warrants_capturedInTownId_towns_id",
+	}),
+	courtCase: one(courtCases),
+}));
+
+export const courtCasesRelations = relations(courtCases, ({one}) => ({
+	warrant: one(warrants, {
+		fields: [courtCases.warrantId],
+		references: [warrants.id],
+	}),
+	town: one(towns, {
+		fields: [courtCases.townId],
+		references: [towns.id],
+		relationName: "courtCases_townId_towns_id",
+	}),
+	kingdom: one(kingdoms, {
+		fields: [courtCases.kingdomId],
+		references: [kingdoms.id],
+	}),
+	defendant: one(characters, {
+		fields: [courtCases.defendantId],
+		references: [characters.id],
+		relationName: "courtCases_defendantId_characters_id",
+	}),
+	sheriff: one(characters, {
+		fields: [courtCases.sheriffId],
+		references: [characters.id],
+		relationName: "courtCases_sheriffId_characters_id",
+	}),
+	judge: one(characters, {
+		fields: [courtCases.judgeId],
+		references: [characters.id],
+		relationName: "courtCases_judgeId_characters_id",
 	}),
 }));
