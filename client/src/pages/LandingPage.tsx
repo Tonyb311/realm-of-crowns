@@ -123,13 +123,12 @@ export default function LandingPage() {
 
         {/* SVG emblem — atmospheric watermark behind title */}
         <svg
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 sm:w-96 md:w-[28rem] text-realm-gold-400 opacity-[0.08] pointer-events-none"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 sm:w-96 md:w-[28rem] text-realm-gold-400 opacity-[0.05] pointer-events-none"
           viewBox="0 0 200 260"
           fill="none"
           stroke="currentColor"
           strokeLinecap="round"
           strokeLinejoin="round"
-          style={{ animation: 'emblem-rotate 90s linear infinite' }}
         >
           {/* Outer shield */}
           <path d="M100 30 L180 60 L180 155 Q180 215 100 250 Q20 215 20 155 L20 60 Z" strokeWidth="1.5" />
@@ -482,7 +481,7 @@ export default function LandingPage() {
               animation: 'gold-shimmer 12s ease-in-out infinite',
             }}
           >
-            Forge a sword at dawn. Campaign for mayor by midday. Lead a prayer at the temple of Solarius before dusk. Rob a merchant on the road between towns. Read the fear in an enemy&apos;s mind before they draw their blade. Brew a healing potion from herbs you gathered yesterday. Track a lost caravan through territory no sane person would cross. Start a trade war that bankrupts a rival guild. Rise to High Priest and watch the mayor beg for your congregation&apos;s vote. Betray the council that elected you. Repent to a god who remembers everything.
+            Forge a sword at dawn. Campaign for mayor by midday. Lead a prayer at the temple of Solarius before dusk. Rob a merchant on the road between towns. Read the fear in an enemy&apos;s mind before they draw their blade. Brew a healing potion from herbs you gathered yesterday. Start a trade war that bankrupts a rival guild. Rise to High Priest and watch the mayor beg for your congregation&apos;s vote. Betray the council that elected you. Repent to a god who remembers everything.
           </motion.p>
 
           <motion.div
@@ -732,10 +731,6 @@ export default function LandingPage() {
         @keyframes scroll-pulse {
           0%, 100% { opacity: 0.3; }
           50% { opacity: 0.7; }
-        }
-        @keyframes emblem-rotate {
-          from { transform: translate(-50%, -50%) rotate(0deg); }
-          to { transform: translate(-50%, -50%) rotate(360deg); }
         }
         @keyframes gold-shimmer {
           0% { background-position: 0% 50%; }
