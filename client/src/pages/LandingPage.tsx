@@ -8,7 +8,6 @@ import {
   Scroll,
   Dice5,
   Globe,
-  MessageSquare,
 } from 'lucide-react';
 import { RealmButton } from '../components/ui/RealmButton';
 import { RealmInput } from '../components/ui/RealmInput';
@@ -174,7 +173,7 @@ export default function LandingPage() {
           </motion.p>
 
           {/* Email capture — compact inline */}
-          <motion.div custom={5} variants={fadeUp} initial="hidden" animate="visible" className="max-w-md mx-auto">
+          <motion.div custom={5} variants={fadeUp} initial="hidden" animate="visible" className="max-w-lg mx-auto">
             {heroSubmitted ? (
               <div className="py-3">
                 <p className="font-display text-realm-gold-400 text-sm">A raven takes flight.</p>
@@ -190,7 +189,7 @@ export default function LandingPage() {
                   required
                   className="flex-1"
                 />
-                <RealmButton type="submit" variant="primary" size="md" className="shrink-0 flex items-center gap-2">
+                <RealmButton type="submit" variant="primary" size="lg" className="shrink-0 flex items-center gap-2">
                   <Send className="w-4 h-4" />
                   <span className="hidden sm:inline">Send a Raven</span>
                 </RealmButton>
@@ -205,14 +204,14 @@ export default function LandingPage() {
           </motion.div>
         </div>
 
-        {/* Scroll indicator */}
+        {/* Scroll indicator — slow opacity pulse */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2, duration: 0.8 }}
           className="mt-10"
         >
-          <ChevronDown className="w-6 h-6 text-realm-gold-400/50 animate-bounce" />
+          <ChevronDown className="w-6 h-6 text-realm-gold-400/50" style={{ animation: 'scroll-pulse 3s ease-in-out infinite' }} />
         </motion.div>
       </section>
 
@@ -229,7 +228,7 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
-            className="font-display text-2xl sm:text-3xl md:text-4xl text-realm-gold-400 text-center mb-3"
+            className="font-display text-xl sm:text-2xl text-realm-gold-400 text-center mb-3"
           >
             Three Pillars. One Character.
           </motion.h2>
@@ -244,7 +243,7 @@ export default function LandingPage() {
             The game you always wanted someone to build.
           </motion.p>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
             {/* The Day's Work — game / mechanical */}
             <motion.div
               variants={cardFade}
@@ -252,7 +251,7 @@ export default function LandingPage() {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: '-60px' }}
-              className="border border-realm-border rounded-lg p-5 bg-realm-bg-700/50"
+              className="border-t-2 border-realm-gold-600/30 pt-5 lg:border-r lg:border-r-realm-gold-600/10 lg:pr-8"
             >
               <h3 className="font-display text-lg text-realm-gold-400 mb-3">The Day&apos;s Work</h3>
               <p className="text-sm text-realm-text-secondary leading-relaxed mb-3">
@@ -270,12 +269,9 @@ export default function LandingPage() {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: '-60px' }}
-              className="border border-realm-border rounded-lg p-5 bg-realm-bg-700/50"
+              className="border-t-2 border-realm-gold-600/30 pt-5 lg:border-r lg:border-r-realm-gold-600/10 lg:pr-8"
             >
-              <div className="flex items-center gap-2 mb-3">
-                <MessageSquare className="w-4 h-4 text-realm-gold-400/60" />
-                <h3 className="font-display text-lg text-realm-gold-400">The Town Square</h3>
-              </div>
+              <h3 className="font-display text-lg text-realm-gold-400 mb-3">The Town Square</h3>
               <p className="text-sm text-realm-text-secondary leading-relaxed mb-3">
                 Post a manifesto against the king&apos;s tariffs. Call out the mayor for raiding the treasury. Rally your guild to swing the vote. Spread a rumor that crashes the iron market. The boards aren&apos;t where you read the drama &mdash; they&apos;re where you make it.
               </p>
@@ -291,7 +287,7 @@ export default function LandingPage() {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: '-60px' }}
-              className="border border-realm-border rounded-lg p-5 bg-realm-bg-700/50"
+              className="border-t-2 border-realm-gold-600/30 pt-5"
             >
               <h3 className="font-display text-lg text-realm-gold-400 mb-3">The Tavern</h3>
               <p className="text-sm text-realm-text-secondary leading-relaxed mb-3">
@@ -303,21 +299,21 @@ export default function LandingPage() {
             </motion.div>
           </div>
 
-          {/* Connector */}
+          {/* Connector — pull quote */}
           <motion.div
             variants={fadeUp}
             custom={4}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-40px' }}
-            className="text-center mt-8"
+            className="text-center mt-10"
           >
             <div className="flex items-center justify-center gap-4 mb-4">
               <div className="h-px w-12 bg-realm-gold-600/25" />
               <div className="w-1.5 h-1.5 rotate-45 border border-realm-gold-500/40" />
               <div className="h-px w-12 bg-realm-gold-600/25" />
             </div>
-            <p className="text-sm text-realm-text-secondary max-w-md mx-auto leading-relaxed">
+            <p className="text-base sm:text-lg text-realm-text-secondary max-w-lg mx-auto leading-relaxed">
               The game builds the character. The boards build the community. The roleplay builds the story.
             </p>
           </motion.div>
@@ -325,17 +321,17 @@ export default function LandingPage() {
       </section>
 
       {/* ================================================================= */}
-      {/* DAILY-ACTION PITCH                                                */}
+      {/* DAILY-ACTION PITCH — editorial left-align                         */}
       {/* ================================================================= */}
-      <section className="py-10 sm:py-14 px-6 relative bg-realm-bg-900">
-        <div className="max-w-2xl mx-auto">
+      <section className="py-14 sm:py-20 px-6 relative bg-realm-bg-900">
+        <div className="max-w-xl md:ml-[10%] lg:ml-[15%]">
           <motion.h2
             variants={fadeUp}
             custom={0}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-60px' }}
-            className="font-display text-2xl sm:text-3xl text-realm-gold-400 text-center mb-3"
+            className="font-display text-3xl sm:text-4xl text-realm-gold-400 text-center md:text-left mb-3"
           >
             Your Lunch Break. Fifteen Minutes.
           </motion.h2>
@@ -345,7 +341,7 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-60px' }}
-            className="text-center text-realm-text-muted text-xs uppercase tracking-wider mb-8"
+            className="text-center md:text-left text-realm-text-muted text-xs uppercase tracking-wider mb-8"
           >
             Not a grind. A world that respects your time.
           </motion.p>
@@ -356,7 +352,7 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-40px' }}
-            className="space-y-4 text-sm text-realm-text-secondary leading-relaxed"
+            className="space-y-4 text-sm text-realm-text-secondary leading-relaxed md:border-l-2 md:border-realm-gold-600/20 md:pl-6"
           >
             <p>
               You open the tab. Your wheat fields are ready &mdash; you harvest before the merchant guild raises grain prices again. The mayor posted a new proclamation on the town board; half the council is furious, so you draft a reply. A play-by-post expedition into the Whispering Mire needs a Ranger &mdash; the GM calls for a Survival check, and your sheet says you&apos;ll probably make it.
@@ -372,7 +368,7 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-40px' }}
-            className="text-center text-xs text-realm-text-muted mt-8 italic"
+            className="text-center md:text-left text-xs text-realm-text-muted mt-8 italic"
           >
             One meaningful action. Real consequences. Then you come back tomorrow.
           </motion.p>
@@ -382,7 +378,10 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* ATMOSPHERIC VIGNETTES                                             */}
       {/* ================================================================= */}
-      <section className="py-12 sm:py-14 px-6 relative bg-realm-bg-800">
+      <section
+        className="py-12 sm:py-14 px-6 relative bg-realm-bg-800"
+        style={{ background: 'radial-gradient(ellipse at center, rgba(77, 143, 168, 0.04) 0%, transparent 70%), var(--color-realm-bg-800)' }}
+      >
         <div className="max-w-3xl mx-auto">
           <motion.h2
             variants={fadeUp}
@@ -390,12 +389,12 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
-            className="font-display text-2xl sm:text-3xl md:text-4xl text-realm-gold-400 text-center mb-10"
+            className="font-display text-xl sm:text-2xl text-realm-gold-400 text-center mb-12"
           >
             A World With Teeth
           </motion.h2>
 
-          <div className="space-y-8">
+          <div className="space-y-12">
             {VIGNETTES.map((v, i) => (
               <motion.div
                 key={v.title}
@@ -404,9 +403,9 @@ export default function LandingPage() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: '-40px' }}
-                className="flex items-start gap-5"
+                className={`flex items-start gap-5 ${i % 2 !== 0 ? 'md:flex-row-reverse md:text-right' : ''}`}
               >
-                <div className="w-10 h-10 shrink-0 rounded-lg border border-realm-gold-600/20 bg-realm-gold-700/10 flex items-center justify-center mt-0.5">
+                <div className="w-10 h-10 shrink-0 flex items-center justify-center mt-0.5">
                   <v.Icon className="w-5 h-5 text-realm-gold-400" />
                 </div>
                 <div>
@@ -422,15 +421,21 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* ROLE ARCHETYPES                                                   */}
       {/* ================================================================= */}
-      <section className="py-10 sm:py-12 px-6 relative bg-realm-bg-900">
-        <div className="max-w-2xl mx-auto text-center">
+      <section className="py-14 sm:py-16 px-6 relative bg-realm-bg-900">
+        {/* Subtle purple glow */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse at center, rgba(138, 80, 200, 0.05) 0%, transparent 60%)' }}
+        />
+
+        <div className="max-w-2xl mx-auto text-center relative z-10">
           <motion.h2
             variants={fadeUp}
             custom={0}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-60px' }}
-            className="font-display text-2xl sm:text-3xl text-realm-gold-400 mb-6"
+            className="font-display text-3xl sm:text-4xl text-realm-gold-400 mb-6"
           >
             What Will You Become?
           </motion.h2>
@@ -476,7 +481,7 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
-            className="font-display text-2xl sm:text-3xl md:text-4xl text-realm-gold-400 text-center mb-3"
+            className="font-display text-xl sm:text-2xl text-realm-gold-400 text-center mb-3"
           >
             The Peoples of Aethermere
           </motion.h2>
@@ -491,7 +496,7 @@ export default function LandingPage() {
             Seven peoples at launch. Thirteen more awakening.
           </motion.p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
             {CORE_RACES.map((race, i) => (
               <motion.div
                 key={race.name}
@@ -504,7 +509,7 @@ export default function LandingPage() {
               >
                 <div className="w-px h-full min-h-[2rem] shrink-0 bg-realm-gold-600/25 mt-1" />
                 <div>
-                  <span className="font-display text-sm text-realm-gold-400">{race.name}</span>
+                  <span className="font-display text-base text-realm-gold-400">{race.name}</span>
                   <p className="text-xs text-realm-text-secondary leading-relaxed mt-0.5">{race.desc}</p>
                 </div>
               </motion.div>
@@ -517,7 +522,7 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-30px' }}
-            className="text-center text-xs text-realm-text-muted mt-8 leading-relaxed max-w-xl mx-auto"
+            className="text-center text-xs text-realm-text-muted mt-10 pt-6 border-t border-realm-gold-600/10 leading-relaxed max-w-xl mx-auto"
           >
             Thirteen more peoples stir at the edges of Aethermere &mdash; Half-Elves, Half-Orcs, Gnomes, Goliath, Beastfolk, Aasimar, Nightborne, Mosskin, Forgeborn, Elementari, Revenant, Changeling, and Kenku. Their stories are still being written.
           </motion.p>
@@ -525,64 +530,69 @@ export default function LandingPage() {
       </section>
 
       {/* ================================================================= */}
-      {/* COMMUNITY & RP                                                    */}
+      {/* COMMUNITY & RP — right-aligned editorial                          */}
       {/* ================================================================= */}
-      <section className="py-10 sm:py-12 px-6 relative bg-realm-bg-900">
-        <div className="max-w-2xl mx-auto text-center">
+      <section
+        className="py-10 sm:py-12 px-6 relative bg-realm-bg-900"
+        style={{ background: 'radial-gradient(ellipse at 70% 50%, rgba(138, 80, 200, 0.03) 0%, transparent 60%), var(--color-realm-bg-900)' }}
+      >
+        <div className="max-w-xl md:mr-[10%] lg:mr-[15%] md:ml-auto">
           <motion.h2
             variants={fadeUp}
             custom={0}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-60px' }}
-            className="font-display text-2xl sm:text-3xl text-realm-gold-400 mb-4"
+            className="font-display text-2xl sm:text-3xl text-realm-gold-400 text-center md:text-left mb-4"
           >
             Roleplay Built In, Not Bolted On
           </motion.h2>
 
-          <motion.p
-            variants={fadeUp}
-            custom={1}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-60px' }}
-            className="text-sm text-realm-text-secondary leading-relaxed mb-4"
-          >
-            Grab a few friends. Open a thread. Write your characters into a scene. When something contested happens, roll &mdash; your actual stats, your actual gear, your actual level. No GM required. The character sheet does the heavy lifting of making it feel like a game rather than just collaborative fiction.
-          </motion.p>
+          <div className="md:border-r-2 md:border-realm-gold-600/20 md:pr-6 text-center md:text-left">
+            <motion.p
+              variants={fadeUp}
+              custom={1}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-60px' }}
+              className="text-sm text-realm-text-secondary leading-relaxed mb-4"
+            >
+              Grab a few friends. Open a thread. Write your characters into a scene. When something contested happens, roll &mdash; your actual stats, your actual gear, your actual level. No GM required. The character sheet does the heavy lifting of making it feel like a game rather than just collaborative fiction.
+            </motion.p>
 
-          <motion.p
-            variants={fadeUp}
-            custom={2}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-60px' }}
-            className="text-sm text-realm-text-secondary leading-relaxed mb-4"
-          >
-            And when you want more structure, narrator tools give a GM everything they need &mdash; scene setup, contested rolls, NPC management. But freeform is the default. The barrier to entry is zero.
-          </motion.p>
+            <motion.p
+              variants={fadeUp}
+              custom={2}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-60px' }}
+              className="text-sm text-realm-text-secondary leading-relaxed mb-4"
+            >
+              And when you want more structure, narrator tools give a GM everything they need &mdash; scene setup, contested rolls, NPC management. But freeform is the default. The barrier to entry is zero.
+            </motion.p>
 
-          <motion.p
-            variants={fadeUp}
-            custom={3}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-60px' }}
-            className="text-xs text-realm-text-muted italic"
-          >
-            Forum RP never touches game state. No one can write away what you&apos;ve earned. Your stats are real, your reputation is earned, and the sheet isn&apos;t a prop &mdash; it&apos;s proof.
-          </motion.p>
+            <motion.p
+              variants={fadeUp}
+              custom={3}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-60px' }}
+              className="text-xs text-realm-text-muted italic"
+            >
+              Forum RP never touches game state. No one can write away what you&apos;ve earned. Your stats are real, your reputation is earned, and the sheet isn&apos;t a prop &mdash; it&apos;s proof.
+            </motion.p>
+          </div>
         </div>
       </section>
 
       {/* ================================================================= */}
       {/* EMAIL CAPTURE — FULL ATMOSPHERIC                                  */}
       {/* ================================================================= */}
-      <section className="py-14 sm:py-16 px-6 relative bg-realm-bg-800">
-        {/* Ambient glow */}
+      <section className="py-16 sm:py-20 px-6 relative bg-realm-bg-800">
+        {/* Ambient glow — strengthened */}
         <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(138, 80, 200, 0.05) 0%, transparent 70%)' }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(138, 80, 200, 0.08) 0%, transparent 70%)' }}
         />
 
         <motion.div
@@ -595,7 +605,7 @@ export default function LandingPage() {
         >
           <h2
             className="font-display text-3xl sm:text-4xl md:text-5xl text-realm-gold-400 mb-4"
-            style={{ textShadow: '0 0 30px rgba(212, 168, 67, 0.25)' }}
+            style={{ textShadow: '0 0 40px rgba(212, 168, 67, 0.3)' }}
           >
             The Gates Will Open Soon
           </h2>
@@ -610,7 +620,7 @@ export default function LandingPage() {
               <p className="text-realm-text-muted text-xs mt-2">Watch the skies. Word will come.</p>
             </div>
           ) : (
-            <form onSubmit={handleBottomSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+            <form onSubmit={handleBottomSubmit} className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
               <RealmInput
                 type="email"
                 placeholder="Your email address"
@@ -671,11 +681,15 @@ export default function LandingPage() {
         </div>
       </footer>
 
-      {/* Keyframe for ambient pulse */}
+      {/* Keyframes */}
       <style>{`
         @keyframes pulse-glow {
           0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); }
           50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+        }
+        @keyframes scroll-pulse {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.7; }
         }
       `}</style>
     </div>
