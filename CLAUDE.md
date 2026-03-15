@@ -216,19 +216,23 @@ When evaluating any feature, design choice, or implementation approach:
 3. Does it reinforce player interdependence? Or bypass other players?
 4. Does it respect the daily-action model? Or create pressure to play more?
 5. Does it feel like it belongs in Aethermere? Or does it break the fiction?
+6. Does it empower players to create? GMs, politicians, merchants, writers — our best content is player-made.
 
 If the answer to any of these is no, rethink before building.
 
 ### Two-Game Model
 - **Game 1:** Daily-action MMO (economy, combat, politics, crafting)
-- **Game 2:** Play-by-post RPG on forums (dice rolls, skill checks, narrator tools, player-run adventures)
+- **Game 2:** Play-by-post RPG with tiered engagement:
+  - **Freeform RP** on boards — casual, drop-in, low commitment
+  - **Campaigns** — structured PBP with GM tools, player rosters, dedicated spaces (patron-only creation, free to join)
+  - **Professional GM-friendly** — platform serves as venue for paid GMs who bring their player communities in
 - Both share the same character sheet. The game builds the character; the character powers the RP; the RP retains the community.
 - **Hard rule:** Forum RP does NOT affect game state. Ever.
 
 ### Monetization Guardrails
 - Never sell power, progression speed, or economic advantage
-- Never gate core gameplay behind a paywall
-- Subscription sells expression and convenience (character slots, cosmetics, RP tools)
+- Never gate core gameplay or RP participation behind a paywall
+- Subscription sells expression, convenience, and creation tools (character slots, cosmetics, RP tools, campaign GM tools)
 - No ads, no premium currency, no lootboxes, no pay-to-skip
 
 **Tech:** React 19 + TypeScript 5.9 + Vite 7 + Tailwind CSS 4 + Zustand 5 | Node.js 22 + Express 5 | PostgreSQL 15 + Drizzle ORM | Redis 7 | Socket.io | Docker + Azure Container Apps
