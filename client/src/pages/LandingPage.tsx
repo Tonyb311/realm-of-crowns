@@ -63,13 +63,13 @@ const VIGNETTES = [
 // Race data
 // ---------------------------------------------------------------------------
 const CORE_RACES = [
-  { name: 'Humans', desc: 'Empire builders of the Verdant Heartlands, ambitious to a fault and convinced the world was built for them.' },
-  { name: 'Elves', desc: 'Ancient guardians of Silverwood who remember grudges older than most civilizations.' },
-  { name: 'Dwarves', desc: 'Mountain-folk of Ironvault Deeps whose craftsmanship is legend and whose stubbornness is worse.' },
-  { name: 'Orcs', desc: 'Honor-bound warriors of the Bloodstone Steppe, fierce in battle and first to keep their word.' },
-  { name: 'Drakonid', desc: 'Scaled descendants of dragonkind from the Frozen Reaches, carrying storm and fire in their breath.' },
-  { name: 'Nethkin', desc: 'Shadow-touched outcasts of Vel\u2019Naris, wielding dark gifts with the cunning of those who\u2019ve had to survive.' },
-  { name: 'Harthfolk', desc: 'Cheerful traders of the Crossroads Freehold, welcome at every table and underestimated at every one.' },
+  { name: 'Humans', desc: 'Empire builders of the Verdant Heartlands, ambitious to a fault and convinced the world was built for them.', color: '#D4A843' },
+  { name: 'Elves', desc: 'Ancient guardians of Silverwood who remember grudges older than most civilizations.', color: '#6B9E6B' },
+  { name: 'Dwarves', desc: 'Mountain-folk of Ironvault Deeps whose craftsmanship is legend and whose stubbornness is worse.', color: '#C9875A' },
+  { name: 'Orcs', desc: 'Honor-bound warriors of the Bloodstone Steppe, fierce in battle and first to keep their word.', color: '#B85C5C' },
+  { name: 'Drakonid', desc: 'Five clans scattered across Aethermere, each bearing a different element \u2014 the most powerful race on the continent, if centuries of silence hadn\u2019t made strangers of kin.', color: '#C0C8D4' },
+  { name: 'Nethkin', desc: 'Shadow-touched outcasts of the Shadowmere Marshes, wielding dark gifts and trading in secrets with the cunning of survivors.', color: '#9B6BB5' },
+  { name: 'Harthfolk', desc: 'Cheerful traders of the Crossroads Freehold, welcome at every table and underestimated at every one.', color: '#C8956B' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -120,6 +120,32 @@ export default function LandingPage() {
             animation: 'pulse-glow 6s ease-in-out infinite',
           }}
         />
+
+        {/* SVG emblem — atmospheric watermark behind title */}
+        <svg
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 sm:w-96 md:w-[28rem] text-realm-gold-400 opacity-[0.08] pointer-events-none"
+          viewBox="0 0 200 260"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ animation: 'emblem-rotate 90s linear infinite' }}
+        >
+          {/* Outer shield */}
+          <path d="M100 30 L180 60 L180 155 Q180 215 100 250 Q20 215 20 155 L20 60 Z" strokeWidth="1.5" />
+          {/* Inner shield border */}
+          <path d="M100 42 L168 68 L168 148 Q168 203 100 235 Q32 203 32 148 L32 68 Z" strokeWidth="0.75" />
+          {/* Crown points */}
+          <path d="M68 32 L80 10 L92 28" strokeWidth="1.2" />
+          <path d="M88 26 L100 2 L112 26" strokeWidth="1.2" />
+          <path d="M108 28 L120 10 L132 32" strokeWidth="1.2" />
+          {/* Center diamond */}
+          <path d="M100 120 L115 140 L100 160 L85 140 Z" strokeWidth="1" />
+          {/* Vertical axis */}
+          <line x1="100" y1="80" x2="100" y2="200" strokeWidth="0.75" />
+          {/* Horizontal axis */}
+          <line x1="55" y1="140" x2="145" y2="140" strokeWidth="0.75" />
+        </svg>
 
         {/* Hero content */}
         <div className="relative z-10 text-center max-w-3xl mx-auto">
@@ -251,11 +277,11 @@ export default function LandingPage() {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: '-60px' }}
-              className="border-t-2 border-realm-gold-600/30 pt-5 lg:border-r lg:border-r-realm-gold-600/10 lg:pr-8"
+              className="pillar border-t-2 border-realm-gold-600/30 pt-5 lg:border-r lg:border-r-realm-gold-600/10 lg:pr-8 transition-colors duration-200"
             >
-              <h3 className="font-display text-lg text-realm-gold-400 mb-3">The Day&apos;s Work</h3>
+              <h3 className="font-display text-lg text-realm-gold-400 mb-3 transition-all duration-200">The Day&apos;s Work</h3>
               <p className="text-sm text-realm-text-secondary leading-relaxed mb-3">
-                Smelt ore. Brew a potion. Travel dangerous roads where bandits and beasts test your steel. Elect mayors who can tax and betray. Build an economy where no one is self-sufficient and everyone depends on each other.
+                Smelt ore. Brew a potion. Travel dangerous roads where bandits and beasts test your steel. Tithe to a god who rewards the faithful. Elect mayors who can tax and betray. Build an economy where no one is self-sufficient and everyone depends on each other.
               </p>
               <p className="text-xs text-realm-text-muted italic">
                 One action per day. The world moves whether you act or not &mdash; make yours count.
@@ -269,11 +295,11 @@ export default function LandingPage() {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: '-60px' }}
-              className="border-t-2 border-realm-gold-600/30 pt-5 lg:border-r lg:border-r-realm-gold-600/10 lg:pr-8"
+              className="pillar border-t-2 border-realm-gold-600/30 pt-5 lg:border-r lg:border-r-realm-gold-600/10 lg:pr-8 transition-colors duration-200"
             >
-              <h3 className="font-display text-lg text-realm-gold-400 mb-3">The Town Square</h3>
+              <h3 className="font-display text-lg text-realm-gold-400 mb-3 transition-all duration-200">The Town Square</h3>
               <p className="text-sm text-realm-text-secondary leading-relaxed mb-3">
-                Post a manifesto against the king&apos;s tariffs. Call out the mayor for raiding the treasury. Rally your guild to swing the vote. Spread a rumor that crashes the iron market. The boards aren&apos;t where you read the drama &mdash; they&apos;re where you make it.
+                Post a manifesto against the king&apos;s tariffs. Call out the mayor for raiding the treasury. Rally your guild to swing the vote. Watch the High Priest&apos;s sermon draw more people than the mayor&apos;s speech. Spread a rumor that crashes the iron market. The boards aren&apos;t where you read the drama &mdash; they&apos;re where you make it.
               </p>
               <p className="text-xs text-realm-text-muted italic">
                 The connective tissue that makes sixty-eight towns feel like one living world.
@@ -287,9 +313,9 @@ export default function LandingPage() {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: '-60px' }}
-              className="border-t-2 border-realm-gold-600/30 pt-5"
+              className="pillar border-t-2 border-realm-gold-600/30 pt-5 transition-colors duration-200"
             >
-              <h3 className="font-display text-lg text-realm-gold-400 mb-3">The Tavern</h3>
+              <h3 className="font-display text-lg text-realm-gold-400 mb-3 transition-all duration-200">The Tavern</h3>
               <p className="text-sm text-realm-text-secondary leading-relaxed mb-3">
                 Open a thread in Aethermere&apos;s forums. Write your character into a scene &mdash; a moonlit negotiation, a duel in the ruins, a feast before the siege. When something contested happens, roll. Your real stats. Your real gear. The character sheet does the heavy lifting.
               </p>
@@ -446,9 +472,17 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-40px' }}
-            className="font-display text-xl sm:text-2xl text-realm-text-primary/90 leading-relaxed mb-6"
+            className="font-display text-xl sm:text-2xl leading-relaxed mb-6"
+            style={{
+              background: 'linear-gradient(135deg, #D4A843 0%, #F5C542 40%, #D4A843 60%, #C9952B 100%)',
+              backgroundSize: '200% auto',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              animation: 'gold-shimmer 12s ease-in-out infinite',
+            }}
           >
-            Forge a sword at dawn. Campaign for mayor by midday. Lead a prayer at the temple of Solarius before dusk. Rob a merchant on the road between towns. Brew a healing potion from herbs you gathered yesterday. Start a trade war that bankrupts a rival guild. Betray the council that elected you. Repent to a god who remembers everything.
+            Forge a sword at dawn. Campaign for mayor by midday. Lead a prayer at the temple of Solarius before dusk. Rob a merchant on the road between towns. Read the fear in an enemy&apos;s mind before they draw their blade. Brew a healing potion from herbs you gathered yesterday. Track a lost caravan through territory no sane person would cross. Start a trade war that bankrupts a rival guild. Rise to High Priest and watch the mayor beg for your congregation&apos;s vote. Betray the council that elected you. Repent to a god who remembers everything.
           </motion.p>
 
           <motion.div
@@ -505,11 +539,19 @@ export default function LandingPage() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: '-30px' }}
-                className="flex items-start gap-3 py-2"
+                className="race-entry flex items-start gap-3 py-2"
               >
-                <div className="w-px h-full min-h-[2rem] shrink-0 bg-realm-gold-600/25 mt-1" />
+                <div
+                  className="w-px h-full min-h-[2rem] shrink-0 mt-1 opacity-40 transition-opacity duration-200"
+                  style={{ backgroundColor: race.color }}
+                />
                 <div>
-                  <span className="font-display text-base text-realm-gold-400">{race.name}</span>
+                  <span
+                    className="race-name font-display text-base transition-all duration-200"
+                    style={{ color: race.color }}
+                  >
+                    {race.name}
+                  </span>
                   <p className="text-xs text-realm-text-secondary leading-relaxed mt-0.5">{race.desc}</p>
                 </div>
               </motion.div>
@@ -681,7 +723,7 @@ export default function LandingPage() {
         </div>
       </footer>
 
-      {/* Keyframes */}
+      {/* Keyframes + hover styles */}
       <style>{`
         @keyframes pulse-glow {
           0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); }
@@ -691,6 +733,19 @@ export default function LandingPage() {
           0%, 100% { opacity: 0.3; }
           50% { opacity: 0.7; }
         }
+        @keyframes emblem-rotate {
+          from { transform: translate(-50%, -50%) rotate(0deg); }
+          to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        @keyframes gold-shimmer {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .pillar:hover { border-top-color: rgba(201, 149, 43, 0.5); }
+        .pillar:hover h3 { text-shadow: 0 0 12px rgba(212, 168, 67, 0.15); }
+        .race-entry:hover .race-name { filter: brightness(1.15); }
+        .race-entry:hover > div:first-child { opacity: 0.7; }
       `}</style>
     </div>
   );
