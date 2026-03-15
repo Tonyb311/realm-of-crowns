@@ -8,6 +8,7 @@ import {
   Scroll,
   Dice5,
   Globe,
+  MessageSquare,
 } from 'lucide-react';
 import { RealmButton } from '../components/ui/RealmButton';
 import { RealmInput } from '../components/ui/RealmInput';
@@ -43,7 +44,7 @@ const VIGNETTES = [
     body: 'The blacksmith needs the miner who needs the merchant who needs the caravan guard who needs the blacksmith. Twenty-nine professions, none self-sufficient. The economy isn\u2019t a feature \u2014 it\u2019s the reason you need each other.',
   },
   {
-    title: 'The Board',
+    title: 'The Election',
     Icon: Scroll,
     body: 'Someone posted that the mayor is embezzling from the town treasury. The election is in three days. You have evidence. Do you publish it now, or wait until the vote count favors your candidate? The politics aren\u2019t scripted. The drama is real.',
   },
@@ -156,7 +157,7 @@ export default function LandingPage() {
             animate="visible"
             className="text-xs text-realm-text-muted mb-8 px-4 max-w-lg mx-auto tracking-wide uppercase"
           >
-            A daily-action MMO and play-by-post RPG, unified by one character sheet
+            A world to shape, a community to join, and a story to tell &mdash; all through one character
           </motion.p>
 
           {/* Email capture — compact inline */}
@@ -203,12 +204,12 @@ export default function LandingPage() {
       </section>
 
       {/* ================================================================= */}
-      {/* TWO-GAME MODEL                                                    */}
+      {/* THREE PILLARS                                                     */}
       {/* ================================================================= */}
       <section className="py-12 sm:py-16 px-6 relative bg-realm-bg-800">
         <div className="absolute inset-x-0 top-0 h-16 pointer-events-none bg-gradient-to-b from-realm-bg-900 to-transparent" />
 
-        <div className="max-w-4xl mx-auto relative z-10">
+        <div className="max-w-5xl mx-auto relative z-10">
           <motion.h2
             variants={fadeUp}
             custom={0}
@@ -217,7 +218,7 @@ export default function LandingPage() {
             viewport={{ once: true, margin: '-80px' }}
             className="font-display text-2xl sm:text-3xl md:text-4xl text-realm-gold-400 text-center mb-3"
           >
-            Two Games. One Character.
+            Three Pillars. One Character.
           </motion.h2>
           <motion.p
             variants={fadeUp}
@@ -230,40 +231,61 @@ export default function LandingPage() {
             The game you always wanted someone to build.
           </motion.p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-            {/* The Realm — MMO side */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* The Day's Work — game / mechanical */}
             <motion.div
               variants={cardFade}
               custom={0}
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: '-60px' }}
-              className="border border-realm-border rounded-lg p-6 bg-realm-bg-700/50"
+              className="border border-realm-border rounded-lg p-5 bg-realm-bg-700/50"
             >
-              <h3 className="font-display text-xl text-realm-gold-400 mb-4">The Realm</h3>
+              <h3 className="font-display text-lg text-realm-gold-400 mb-3">The Day&apos;s Work</h3>
               <p className="text-sm text-realm-text-secondary leading-relaxed mb-3">
-                A living economy where the blacksmith depends on the miner, the miner depends on the merchant, and the merchant depends on safe roads you haven&apos;t patrolled yet. Elect mayors who can tax, legislate, and betray. Travel roads where combat plays out like a tabletop session. Build something that matters.
+                Craft, trade, travel, fight. Elect mayors who can tax and betray. Build an economy where no one is self-sufficient and everyone depends on each other.
               </p>
               <p className="text-xs text-realm-text-muted italic">
-                One action per day. Real consequences. A world that doesn&apos;t need you to play eight hours to care about you.
+                One action per day. The world moves whether you act or not &mdash; make yours count.
               </p>
             </motion.div>
 
-            {/* The Tavern — RP side */}
+            {/* The Town Square — social / community */}
             <motion.div
               variants={cardFade}
               custom={1}
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: '-60px' }}
-              className="border border-realm-border rounded-lg p-6 bg-realm-bg-700/50"
+              className="border border-realm-border rounded-lg p-5 bg-realm-bg-700/50"
             >
-              <h3 className="font-display text-xl text-realm-gold-400 mb-4">The Tavern</h3>
+              <div className="flex items-center gap-2 mb-3">
+                <MessageSquare className="w-4 h-4 text-realm-gold-400/60" />
+                <h3 className="font-display text-lg text-realm-gold-400">The Town Square</h3>
+              </div>
               <p className="text-sm text-realm-text-secondary leading-relaxed mb-3">
-                The same character sits down at a forum table and tells stories. Dice rolls powered by your real stats. Skill checks that reference your actual abilities. Player-run adventures with narrator tools that feel like a GM screen. Your character sheet bridges both worlds &mdash; and it proves every word.
+                Post a political manifesto. Call out the mayor. Rally votes for your candidate. Spread a rumor that moves the market. The boards aren&apos;t where you read the drama &mdash; they&apos;re where you make it.
               </p>
               <p className="text-xs text-realm-text-muted italic">
-                Play-by-post roleplay where your character isn&apos;t a fiction &mdash; it&apos;s a record of everything you&apos;ve done.
+                The connective tissue that makes sixty-eight towns feel like one living world.
+              </p>
+            </motion.div>
+
+            {/* The Tavern — roleplay / creative */}
+            <motion.div
+              variants={cardFade}
+              custom={2}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-60px' }}
+              className="border border-realm-border rounded-lg p-5 bg-realm-bg-700/50"
+            >
+              <h3 className="font-display text-lg text-realm-gold-400 mb-3">The Tavern</h3>
+              <p className="text-sm text-realm-text-secondary leading-relaxed mb-3">
+                Open a thread. Write your character into a scene. When something contested happens, roll &mdash; your real stats, your real gear. The character sheet does the heavy lifting.
+              </p>
+              <p className="text-xs text-realm-text-muted italic">
+                Play-by-post roleplay where your character isn&apos;t a fiction &mdash; it&apos;s a record of everything you&apos;ve earned.
               </p>
             </motion.div>
           </div>
@@ -271,7 +293,7 @@ export default function LandingPage() {
           {/* Connector */}
           <motion.div
             variants={fadeUp}
-            custom={3}
+            custom={4}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-40px' }}
@@ -283,7 +305,7 @@ export default function LandingPage() {
               <div className="h-px w-12 bg-realm-gold-600/25" />
             </div>
             <p className="text-sm text-realm-text-secondary max-w-md mx-auto leading-relaxed">
-              The game builds the character. The character powers the roleplay. The community keeps everyone coming back.
+              The game builds the character. The boards build the community. The roleplay builds the story.
             </p>
           </motion.div>
         </div>
@@ -406,9 +428,9 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-60px' }}
-            className="text-sm text-realm-text-secondary leading-relaxed mb-6"
+            className="text-sm text-realm-text-secondary leading-relaxed mb-4"
           >
-            Most browser games treat social and creative tools as an afterthought. We made them a pillar. A dice roller backed by real character stats. Narrator tools that feel like a GM screen. Forum roleplay where your character sheet carries the weight of every battle, every election, every betrayal.
+            Grab a few friends. Open a thread. Write your characters into a scene. When something contested happens, roll &mdash; your actual stats, your actual gear, your actual level. No GM required. The character sheet does the heavy lifting of making it feel like a game rather than just collaborative fiction.
           </motion.p>
 
           <motion.p
@@ -417,9 +439,20 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-60px' }}
+            className="text-sm text-realm-text-secondary leading-relaxed mb-4"
+          >
+            And when you want more structure, narrator tools give a GM everything they need &mdash; scene setup, contested rolls, NPC management. But freeform is the default. The barrier to entry is zero.
+          </motion.p>
+
+          <motion.p
+            variants={fadeUp}
+            custom={3}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-60px' }}
             className="text-xs text-realm-text-muted italic"
           >
-            The character sheet isn&apos;t a spreadsheet. It&apos;s a document that exists in the world.
+            Forum RP never touches game state. No one can write away what you&apos;ve earned. Your stats are real, your reputation is earned, and the sheet isn&apos;t a prop &mdash; it&apos;s proof.
           </motion.p>
         </div>
       </section>
